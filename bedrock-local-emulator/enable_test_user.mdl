@@ -1,3 +1,6 @@
 -- TEMPORARY, local testing only. Revert with bedrock-local-emulator/disable_test_user.mdl
+-- MockTester = Administrator (can use the AWS Bedrock Implementation page), MockUser = plain User (must be denied).
+-- Never run this against a deployed app: the passwords are published in this repository.
 alter app security ( EnableDemoUsers: true );
-create or modify demo user 'MockTester' ( Password: 'MockTest-2026-Bedrock1', UserRoles: (User) );
+create or modify demo user 'MockTester' ( Password: 'MockTest-2026-Bedrock1', UserRoles: (Administrator) );
+create or modify demo user 'MockUser' ( Password: 'MockUser-2026-Bedrock1', UserRoles: (User) );

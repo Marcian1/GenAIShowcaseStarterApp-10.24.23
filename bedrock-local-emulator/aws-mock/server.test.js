@@ -27,8 +27,13 @@ before(async () => {
 after(() => proc && proc.kill());
 
 test('STS issues credentials', () => assert.ok(creds.key && creds.token));
-test('STS rejects unsupported actions', async () => {
+test('STS answers GetCallerIdentity (used by the Test connection button)', async () => {
   const r = await fetch(BASE + '/', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'Action=GetCallerIdentity' });
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /<Arn>arn:aws:iam::\d+:assumed-role\/.+<\/Arn>/);
+});
+test('STS rejects unsupported actions', async () => {
+  const r = await fetch(BASE + '/', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'Action=DeleteEverything' });
   assert.equal(r.status, 400);
 });
 test('Bedrock rejects unsigned calls', async () => {

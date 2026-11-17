@@ -10,7 +10,9 @@ The SDK is redirected with the standard `AWS_ENDPOINT_URL` env var.
 2. In the same shell: `mxcli run --local --detach --db-type hsqldb -p GenAIShowcaseStarterApp.mpr`
 3. Vector DB: Postgres with pgvector (database `bedrock_vectordb`), configured in the app as DatabaseConfiguration
    `atlas-ceba-pp-vectordb` (PgVector DB Config menu item).
-4. Login needs a user: `mxcli exec bedrock-local-emulator/enable_test_user.mdl` (temporary demo user; undo with `disable_test_user.mdl`).
+4. Login needs a user: `mxcli exec bedrock-local-emulator/enable_test_user.mdl` (temporary demo users; undo with `disable_test_user.mdl`).
+   `MockTester` has the **Administrator** app role and can use the AWS Bedrock Implementation page; `MockUser` has only the
+   plain **User** role and is denied (the page is hidden and a direct link returns 403). Never run this against a deployed app.
 
 Embeddings are deterministic hashed bag-of-words, so similarity reflects word overlap, not true semantics.
 Chat replies just echo the prompt.

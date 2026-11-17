@@ -1,0 +1,48 @@
+-- Security hardening: the single app role 'User' used to bundle every module's Administrator role, so any
+-- signed-in user could edit the AWS Bedrock Implementation setup, delete data and read prompt traces.
+-- Split it:
+--   Administrator = everything User had + Administration.Administrator, manages all roles.
+--   User          = no AWSBedrockImplementation.Admin, no AmazonBedrockConnector.Admin, no trace/usage monitoring.
+-- Other connectors' admin roles (OpenAI, Mistral, Gemini, PgVector, AWSAuthentication, ...) stay on User on purpose:
+-- ~90 showcase pages that regular users open read their configuration entities (removing them gives 328 CE2729 errors).
+-- mdl-build/set-admin-role.js then points the built-in administrator account (MxAdmin) at the Administrator role.
+mdl 1;
+
+create or modify user role Administrator (
+  ModuleRoles: (
+    AWSAuthentication.Admin, Administration.Administrator, Administration.User,
+    AmazonBedrockConnector.Admin, AmazonBedrockConnector.ReadOnly,
+    ConversationalUI.TraceMonitoring, ConversationalUI.UsageMonitoring, ConversationalUI.User,
+    OpenAIConnector.Administrator, OpenAIConnector.User,
+    PgVectorKnowledgeBase.Administrator, System.User,
+    GenAICommons.Administrator, GenAICommons.TraceMonitoring, GenAICommons.UsageMonitoring, GenAICommons.User,
+    MxGenAIConnector.Administrator, MxGenAIConnector.User,
+    AgentCommons.AgentAdmin, MCPClient.Administrator,
+    MistralConnector.Administrator, MistralConnector.User,
+    GoogleGeminiConnector.Administrator, GoogleGeminiConnector.User,
+    General.User, ExampleMicroflows.User,
+    EchoConnector.Administrator, EchoConnector.User,
+    MultiAgentPatterns.User, MCPClient_ConnectToServer.User, MCPServer_ExposeToolsPrompts.User,
+    ChatCompletions_ProductDescription_Agent.User, ChatCompletions_ProductDescription.User,
+    ChatCompletions_ComplexityReduction.User, ChatCompletions_JsonModeText.User,
+    ChatCompletions_JsonModeDemoData.User, ChatCompletions_FunctionCalling.User,
+    ChatCompletions_Vision_Webcam.User, ChatCompletions_ConversationalUI.User,
+    ChatCompletions_DocumentChat.User,
+    Embeddings_RAG.User, Embeddings_SemanticSearch.User, Embeddings_SemanticSearchMultiColumn.User,
+    Embeddings_RawResponse.User, Embeddings_Clustering.User,
+    ImageGenerations_Postcards.User, RAG_Knowledgebase_AmazonBedrock.User, ComputerUse_AmazonBedrock.User,
+    AWSBedrockImplementation.Admin
+  ),
+  ManageAllRoles: true,
+  CheckSecurity: true
+);
+
+alter user role User drop module roles (
+  AWSBedrockImplementation.Admin, AmazonBedrockConnector.Admin,
+  ConversationalUI.TraceMonitoring, ConversationalUI.UsageMonitoring,
+  GenAICommons.TraceMonitoring, GenAICommons.UsageMonitoring
+);
+
+-- The stock Bedrock Connector settings page (visible to ReadOnly) calls DS_Settings, which only fetches
+-- AWSAuthentication.Settings (already readable by User). Without this grant mx check reports CE2729.
+grant execute on microflow AmazonBedrockConnector.DS_Settings to AmazonBedrockConnector.ReadOnly;

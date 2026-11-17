@@ -1,2 +1,4 @@
+-- Reverts enable_test_user.mdl
 drop demo user 'MockTester';
+drop demo user 'MockUser';
 alter app security ( EnableDemoUsers: false );

@@ -2,6 +2,7 @@ package awsbedrockimplementation.impl;
 
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import com.mendix.core.Core;
 import com.mendix.logging.ILogNode;
@@ -34,6 +35,9 @@ public final class BedrockSupport {
 	private static final Duration READ_TIMEOUT = Duration.ofSeconds(120);
 	private static final Duration CALL_TIMEOUT = Duration.ofSeconds(120);
 
+	/** Same shape as the check in JA_BedrockTestConnection: e.g. eu-central-1, us-gov-west-1. Keeps the region from altering the endpoint host. */
+	private static final Pattern REGION_PATTERN = Pattern.compile("^[a-z]{2}(-[a-z]+)+-[0-9]$");
+
 	private static final ConcurrentHashMap<String, BedrockRuntimeClient> RUNTIME_CLIENTS = new ConcurrentHashMap<>();
 	private static volatile AwsCredentialsProvider credentials;
 
@@ -56,7 +60,11 @@ public final class BedrockSupport {
 		if (region == null || region.isBlank()) {
 			throw new IllegalArgumentException("No AWS region is configured for Bedrock.");
 		}
-		return RUNTIME_CLIENTS.computeIfAbsent(region.trim(), r -> BedrockRuntimeClient.builder()
+		String trimmed = region.trim();
+		if (!REGION_PATTERN.matcher(trimmed).matches()) {
+			throw new IllegalArgumentException("The AWS region \"" + trimmed + "\" is not a valid AWS region.");
+		}
+		return RUNTIME_CLIENTS.computeIfAbsent(trimmed, r -> BedrockRuntimeClient.builder()
 				.credentialsProvider(credentials())
 				.region(Region.of(r))
 				.httpClientBuilder(ApacheHttpClient.builder()
