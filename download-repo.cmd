@@ -11,10 +11,12 @@ exit /b
 // Small files are fetched directly; every file over 1 MB is fetched in 1 MB byte-range slices, so large-file blocks do not apply.
 // Every file is verified with Git's own blob SHA-1, interrupted runs resume, and finished files are skipped on a re-run.
 // Public repo: no login. Private repo: it asks once for a read-only token (fine-grained, "Contents: Read-only").
-// Optional arguments: <repo url>  --token <token>  --out <folder>  --all (also fetch module-parts/)
+// Behind a company proxy (direct connections time out)? It uses the Windows system proxy or HTTPS_PROXY automatically,
+// or asks for the proxy address. A proxy that needs a login: --proxy http://user:password@host:port
+// Optional arguments: <repo url>  --token <token>  --proxy <url>  --out <folder>  --all (also fetch module-parts/)
 (async () => {
   const https = require('https'), http = require('http'), fs = require('fs'), path = require('path');
-  const crypto = require('crypto'), readline = require('readline');
+  const crypto = require('crypto'), readline = require('readline'), tls = require('tls'), cp = require('child_process');
   const API = process.env.GH_API_BASE || 'https://api.github.com';
   const RAW = process.env.GH_RAW_BASE || 'https://raw.githubusercontent.com';
   const CHUNK = Number(process.env.DL_CHUNK || 1000000);
@@ -22,10 +24,53 @@ exit /b
   const DEFAULT_URL = 'https://github.com/Marcian1/GenAIShowcaseStarterApp-10.24.23';
   const args = process.argv.slice(2);
   const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
-  const positional = args.find((a, i) => !a.startsWith('--') && !['--token', '--out'].includes(args[i - 1]));
+  const positional = args.find((a, i) => !a.startsWith('--') && !['--token', '--out', '--proxy'].includes(args[i - 1]));
   const skipPrefixes = args.includes('--all') ? [] : ['module-parts/'];   // redundant copy of the big file in 1 MB parts
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
+  let netTimeout = 60000;
+
+  // ---- proxy support (HTTPS through an HTTP proxy using CONNECT) ----
+  function parseRegProxy(out) {   // text of: reg query "HKCU\...\Internet Settings"
+    const enabled = /ProxyEnable\s+REG_DWORD\s+0x1\b/i.test(out); const m = /ProxyServer\s+REG_SZ\s+(.+)/i.exec(out);
+    const pac = (/AutoConfigURL\s+REG_SZ\s+(.+)/i.exec(out) || [])[1];
+    let proxy = '';
+    if (enabled && m) {
+      const v = m[1].trim();
+      if (v.includes('=')) { const pick = (k) => (new RegExp('(?:^|;)' + k + '=([^;]+)', 'i').exec(v) || [])[1]; proxy = pick('https') || pick('http') || ''; }
+      else proxy = v;
+    }
+    return { proxy: proxy.trim(), pac: pac ? pac.trim() : '' };
+  }
+  let pacUrl = '';
+  function detectProxy() {
+    const e = process.env; let p = opt('--proxy') || e.HTTPS_PROXY || e.https_proxy || e.ALL_PROXY || e.HTTP_PROXY || e.http_proxy || '';
+    if (!p && process.platform === 'win32') {
+      try {
+        const out = cp.execSync('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 });
+        const r = parseRegProxy(out); p = r.proxy; pacUrl = r.pac;
+      } catch (_) {}
+    }
+    return p;
+  }
+  class ProxyAgent extends https.Agent {
+    constructor(proxy) { super({ keepAlive: false }); this.proxy = new URL(proxy); }
+    createConnection(options, cb) {
+      const pr = this.proxy, host = options.host || options.hostname, port = options.port || 443, hdr = { Host: host + ':' + port };
+      if (pr.username) hdr['Proxy-Authorization'] = 'Basic ' + Buffer.from(decodeURIComponent(pr.username) + ':' + decodeURIComponent(pr.password)).toString('base64');
+      const req = http.request({ host: pr.hostname, port: pr.port || 80, method: 'CONNECT', path: host + ':' + port, headers: hdr });
+      req.setTimeout(netTimeout, () => req.destroy(new Error('timeout reaching the proxy')));
+      req.on('connect', (res, socket) => {
+        if (res.statusCode !== 200) { socket.destroy(); return cb(new Error('the proxy refused the connection (HTTP ' + res.statusCode + (res.statusCode === 407 ? ' - it needs a login: use --proxy http://user:password@host:port' : '') + ')')); }
+        cb(null, tls.connect({ socket, servername: options.servername || host }));
+      });
+      req.on('error', cb); req.end();
+    }
+  }
+  let proxyUrl = '', proxyAgent = null;
+  function setProxy(v) { v = (v || '').trim(); if (v && !/^https?:\/\//i.test(v)) v = 'http://' + v; proxyUrl = v; proxyAgent = v ? new ProxyAgent(v) : null; }
+  const shownProxy = () => proxyUrl.replace(/\/\/[^@/]*@/, '//***@');
+  setProxy(detectProxy());
 
   // One shared line reader for the whole run (a new reader per question loses buffered/piped input).
   let rl = null; const lineQueue = [], lineWaiters = []; let inputClosed = false;
@@ -48,7 +93,8 @@ exit /b
   function request(url, headers = {}, redirects = 5) {
     return new Promise((resolve, reject) => {
       const u = new URL(url); const lib = u.protocol === 'http:' ? http : https;
-      const req = lib.request(u, { method: 'GET', headers: { 'User-Agent': 'repo-downloader', ...headers }, timeout: 60000 }, res => {
+      const agent = (u.protocol === 'https:' && proxyAgent) ? proxyAgent : undefined;
+      const req = lib.request(u, { method: 'GET', headers: { 'User-Agent': 'repo-downloader', ...headers }, timeout: netTimeout, agent }, res => {
         if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
           res.resume(); const next = new URL(res.headers.location, u);
           const h = { ...headers }; if (next.host !== u.host) delete h.Authorization;
@@ -100,6 +146,7 @@ exit /b
   const bufSha = (buf) => crypto.createHash('sha1').update('blob ' + buf.length + '\0').update(buf).digest('hex');
 
   console.log('=== GitHub repo downloader (large files are fetched in 1 MB pieces) ===\n');
+  if (proxyUrl) console.log('Using proxy ' + shownProxy() + '\n');
   const input = positional || (await ask(`Repo URL [Enter = ${DEFAULT_URL}]: `)) || DEFAULT_URL;
   const { owner, repo, branch: urlBranch } = parseRepo(input);
   const OUT = path.resolve(opt('--out') || path.join(process.cwd(), repo));
@@ -113,6 +160,30 @@ exit /b
     if (tree.truncated) throw new Error('This repository is too large to list in one request.');
     return { branch, commit, files: tree.tree.filter(e => e.type === 'blob') };
   }
+
+  // Quick reachability check (15 s) so a blocked network is reported at once instead of after minutes of retries.
+  async function checkNetwork() {
+    for (;;) {
+      netTimeout = 15000;
+      try { await request(API + '/'); netTimeout = 60000; return true; }
+      catch (e) {
+        netTimeout = 60000;
+        console.log(`\nCould not reach ${new URL(API).host}: ${e.message}` + (proxyUrl ? `  (proxy in use: ${shownProxy()})` : ''));
+        if (/CERT|SELF_SIGNED|issuer/i.test(e.code || e.message)) {
+          console.log('Your network inspects HTTPS with its own certificate. Install Node.js 22.15+ and run with NODE_OPTIONS=--use-system-ca,');
+          console.log('or set NODE_EXTRA_CA_CERTS to your company root certificate file (.pem), then run this again.');
+        } else {
+          console.log('Direct connections look blocked on this network; you most likely have to go through a proxy.');
+          console.log('Find it in Windows Settings > Network & internet > Proxy (or your browser settings) and type it as host:port.');
+          if (pacUrl) console.log('Your system uses an automatic proxy script (' + pacUrl + '). Open that address in a browser and look for "PROXY host:port".');
+        }
+        const p = await ask('Proxy (host:port, or http://user:password@host:port), or press Enter to quit: ');
+        if (!p) { console.log('Stopped.'); return false; }
+        setProxy(p);
+      }
+    }
+  }
+  if (!(await checkNetwork())) return;
 
   let repoData;
   try { repoData = await loadTree(); }
