@@ -1,0 +1,175 @@
+mdl 1;
+
+-- ============================================================================
+-- Pop-up: add or edit a model
+-- ============================================================================
+create or modify page AWSBedrockImplementation.BedrockModel_Edit folder 'Pages' (
+  Title: 'Model',
+  Layout: Atlas_Core.PopupLayout,
+  PopupResizable: true,
+  Params: ( $BedrockModel: AWSBedrockImplementation.BedrockModel )
+) {
+  layoutgrid lgModelEdit {
+    row {
+      column (DesktopWidth: 12, TabletWidth: 12, PhoneWidth: 12) {
+        dataview dvModelEdit (DataSource: $BedrockModel, FormOrientation: Vertical, ReadOnlyStyle: Control) {
+          textbox txtName (Label: 'Display name', Attribute: Name)
+          textbox txtModelId (Label: 'Model ID or inference profile', Attribute: ModelId)
+          dynamictext txtModelIdHint (Content: 'Copy it from the Bedrock console, or use List models in AWS on the Models tab.', Class: 'bedrock-hint')
+          combobox cmbFamily (Label: 'Family', Attribute: Family)
+          dynamictext txtFamilyHint (Content: 'The family picks the request format. Other families need new request mappings first.', Class: 'bedrock-hint')
+          container ctnClaudeSettings (Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, Class: 'bedrock-form-row') {
+            textbox txtMaxTokens (Label: 'Default max tokens', Attribute: MaxTokens)
+            combobox cmbEffort (Label: 'Default effort', Attribute: Effort)
+          }
+          container ctnEmbeddingSettings (Visible: $currentObject/Family != AWSBedrockImplementation.ENUM_ModelFamily.Claude, Class: 'bedrock-form-row') {
+            textbox txtDimension (Label: 'Dimensions', Attribute: Dimension)
+            combobox cmbInputType (Label: 'Input type', Attribute: InputType, Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere)
+            combobox cmbTruncate (Label: 'Truncate', Attribute: Truncate, Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere)
+            switch swNormalize (Label: 'Normalize', booleanAttribute: Normalize, Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan)
+          }
+          container ctnDimensionNote (Visible: $currentObject/Family != AWSBedrockImplementation.ENUM_ModelFamily.Claude, Class: 'bedrock-note bedrock-note-warn') {
+            dynamictext txtDimensionNote (Content: 'The ticket knowledge base stores 1024 dimensions. Other sizes can be tried here but not used for tickets.')
+          }
+          footer {
+            actionbutton btnSaveModel (Caption: 'Save', Action: call microflow AWSBedrockImplementation.ACT_BedrockModel_Save, ButtonStyle: Success)
+            actionbutton btnCancelModel (Caption: 'Cancel', Action: cancel changes close page)
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- Pop-up: try a model
+-- ============================================================================
+create or modify page AWSBedrockImplementation.BedrockModel_Try folder 'Pages' (
+  Title: 'Try a model',
+  Layout: Atlas_Core.PopupLayout,
+  PopupResizable: true,
+  Params: ( $TrySession: AWSBedrockImplementation.TrySession )
+) {
+  layoutgrid lgTry {
+    row {
+      column (DesktopWidth: 12, TabletWidth: 12, PhoneWidth: 12) {
+        dataview dvTry (DataSource: $TrySession, FormOrientation: Vertical, ReadOnlyStyle: Control) {
+          combobox cmbTryModel (Label: 'Model', Attribute: TrySession_BedrockModel, DataSource: database from AWSBedrockImplementation.BedrockModel sort by Name asc, CaptionAttribute: Name, OnChange: call microflow AWSBedrockImplementation.ACT_TrySession_ModelChanged)
+          textarea taTrySystem (Label: 'System prompt (optional)', Attribute: System, Visible: $currentObject/IsChat)
+          textarea taTryPrompt (Label: 'Prompt', Attribute: Input, Visible: $currentObject/IsChat)
+          textarea taTryText (Label: 'Text to embed', Attribute: Input, Visible: not($currentObject/IsChat))
+          accordion accTryAdvanced (collapsible: true, expandBehavior: 'multipleExpanded') {
+            group grpTryAdvanced (headerRenderMode: 'text', headerText: 'Advanced options', initialCollapsedState: 'collapsed') {
+              container ctnTryAdvancedFields (Class: 'bedrock-form-row') {
+                textbox txtTryMaxTokens (Label: 'Max tokens', Attribute: MaxTokens, Visible: $currentObject/IsChat)
+                combobox cmbTryEffort (Label: 'Effort', Attribute: Effort, Visible: $currentObject/IsChat)
+                textbox txtTryDimension (Label: 'Dimensions', Attribute: Dimension, Visible: not($currentObject/IsChat))
+                combobox cmbTryInputType (Label: 'Input type', Attribute: InputType, Visible: $currentObject/ModelFamily = AWSBedrockImplementation.ENUM_ModelFamily.Cohere)
+                combobox cmbTryTruncate (Label: 'Truncate', Attribute: Truncate, Visible: $currentObject/ModelFamily = AWSBedrockImplementation.ENUM_ModelFamily.Cohere)
+                switch swTryNormalize (Label: 'Normalize', booleanAttribute: Normalize, Visible: $currentObject/ModelFamily = AWSBedrockImplementation.ENUM_ModelFamily.Titan)
+              }
+            }
+          }
+          container ctnTrySend (Class: 'bedrock-actions') {
+            actionbutton btnTrySendPrompt (Caption: 'Send prompt', Visible: $currentObject/IsChat, Action: call microflow AWSBedrockImplementation.ACT_TrySession_Send with (ProgressBar: Blocking, ProgressMessage: 'Sending the request…'), ButtonStyle: Primary)
+            actionbutton btnTryEmbed (Caption: 'Create embedding', Visible: not($currentObject/IsChat), Action: call microflow AWSBedrockImplementation.ACT_TrySession_Send with (ProgressBar: Blocking, ProgressMessage: 'Creating the embedding…'), ButtonStyle: Primary)
+          }
+          container ctnTryChatResult (Visible: $currentObject/HasResult and $currentObject/IsChat, Class: 'bedrock-response') {
+            dynamictext txtTryResponseLabel (Content: 'Response', RenderMode: H5)
+            markdown mdTryOutput (stringAttribute: Output)
+            dynamictext txtTryMeta (Content: '{1} s · {2} input · {3} output tokens', ContentParams: ({1} = toString(round($currentObject/Seconds, 2)), {2} = toString($currentObject/InputTokens), {3} = toString($currentObject/OutputTokens)), Class: 'bedrock-hint')
+          }
+          container ctnTryEmbeddingResult (Visible: $currentObject/HasResult and not($currentObject/IsChat), Class: 'bedrock-response') {
+            dynamictext txtTryEmbeddingLabel (Content: 'Result', RenderMode: H5)
+            dynamictext txtTryEmbeddingMeta (Content: '{1} dimensions · {2} s', ContentParams: ({1} = toString($currentObject/Dimension), {2} = toString(round($currentObject/Seconds, 2))), Class: 'bedrock-hint')
+            textarea taTryVector (Label: '', Attribute: VectorPreview, Editable: Never, Class: 'bedrock-mono')
+          }
+          accordion accTryRaw (collapsible: true, expandBehavior: 'multipleExpanded', Visible: $currentObject/HasResult) {
+            group grpTryRaw (headerRenderMode: 'text', headerText: 'Request and response JSON', initialCollapsedState: 'collapsed') {
+              textarea taTryRawRequest (Label: 'Request', Attribute: RawRequest, Editable: Never, Class: 'bedrock-mono')
+              textarea taTryRawResponse (Label: 'Response', Attribute: RawResponse, Editable: Never, Class: 'bedrock-mono')
+            }
+          }
+          footer {
+            actionbutton btnTryClose (Caption: 'Close', Action: close page)
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- Pop-up: add or edit a ticket
+-- ============================================================================
+create or modify page AWSBedrockImplementation.Ticket_Edit folder 'Pages' (
+  Title: 'Ticket',
+  Layout: Atlas_Core.PopupLayout,
+  PopupResizable: true,
+  Params: ( $Ticket: AWSBedrockImplementation.Ticket )
+) {
+  layoutgrid lgTicketEdit {
+    row {
+      column (DesktopWidth: 12, TabletWidth: 12, PhoneWidth: 12) {
+        dataview dvTicketEdit (DataSource: $Ticket, FormOrientation: Vertical, ReadOnlyStyle: Control) {
+          textbox txtTicketSubject (Label: 'Subject', Attribute: Subject)
+          textarea taTicketDescription (Label: 'Description', Attribute: Description)
+          textarea taTicketSteps (Label: 'Reproduction steps', Attribute: ReproductionSteps)
+          textarea taTicketResolution (Label: 'Resolution', Attribute: Resolution)
+          layoutgrid lgTicketEnums {
+            row {
+              column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                combobox cmbTicketCategory (Label: 'Category', Attribute: Category)
+              }
+              column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                combobox cmbTicketStatus (Label: 'Status', Attribute: Status)
+              }
+            }
+          }
+          footer {
+            actionbutton btnSaveTicket (Caption: 'Save', Action: call microflow AWSBedrockImplementation.ACT_Ticket_Save, ButtonStyle: Success)
+            actionbutton btnCancelTicket (Caption: 'Cancel', Action: cancel changes close page)
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- The page: title, setup status and the five tabs. Every tab is its own snippet.
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_Overview folder 'Page' {
+  container bedrockPage (Class: 'aws-bedrock-page') {
+    container pageHeader (Class: 'bedrock-page-header') {
+      dynamictext pageTitle (Content: 'AWS Bedrock demo', RenderMode: H2)
+      dynamictext pageSubtitle (Content: 'Set up your connections and models, load tickets, then try Claude chat, embeddings and ticket search backed by pgvector.', Class: 'bedrock-card-subtitle')
+    }
+    layoutgrid lgPage {
+      row {
+        column (DesktopWidth: AutoFill) {
+          dataview dvConfig (DataSource: microflow AWSBedrockImplementation.DS_Config_Setup) {
+            snippetcall scStatus (Snippet: AWSBedrockImplementation.SNIP_SetupStatus)
+            tabcontainer tabsBedrock (DesignProperties: ('Style': 'Lined')) {
+              tabpage tabConnections (Caption: 'Connections') {
+                snippetcall scConnections (Snippet: AWSBedrockImplementation.SNIP_Connections)
+              }
+              tabpage tabModels (Caption: 'Models') {
+                snippetcall scModels (Snippet: AWSBedrockImplementation.SNIP_Models)
+              }
+              tabpage tabTickets (Caption: 'Tickets') {
+                snippetcall scTickets (Snippet: AWSBedrockImplementation.SNIP_Tickets)
+              }
+              tabpage tabSearchAndAsk (Caption: 'Search and ask') {
+                snippetcall scSearchAndAsk (Snippet: AWSBedrockImplementation.SNIP_SearchAndAsk)
+              }
+              tabpage tabAskTickets (Caption: 'Ask tickets') {
+                snippetcall scAskTickets (Snippet: AWSBedrockImplementation.SNIP_AskTickets)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};

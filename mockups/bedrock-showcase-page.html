@@ -1,0 +1,923 @@
+<title>Bedrock Showcase Page</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: the real app chrome (navy top bar, indigo sidebar, grey page) around ONE Mendix page: a setup checklist plus four Atlas tabs. Colours come from theme/web/custom-variables.scss. */
+:root{
+  --page:#f8f8f8; --surface:#ffffff; --surface-2:#f4f5f8; --line:#e0e2e8; --line-strong:#ced0d3;
+  --fg:#0a1324; --muted:#5f6675; --brand:#264ae5; --brand-hover:#1b37b5; --brand-soft:#e9edff; --on-brand:#ffffff;
+  --ok:#2e8f31; --ok-soft:#e6f5e6; --warn:#a56a00; --warn-soft:#fdf1d8; --crit:#c92f3e; --crit-soft:#fce8ea;
+  --nav:#020557; --side:#24276c; --side-fg:#c9ccf0; --code:#f1f3f8;
+  --t-ok:#2e8f31; --t-css:#b45309; --t-flow:#7c3aed;
+  --font:'Open Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#0f1220; --surface:#181c2e; --surface-2:#1e2336; --line:#2b3150; --line-strong:#3b4266;
+  --fg:#e7e9f5; --muted:#9aa2c0; --brand:#8ea3ff; --brand-hover:#b0beff; --brand-soft:#252c57; --on-brand:#0b1030;
+  --ok:#59c95c; --ok-soft:#17301a; --warn:#eab04a; --warn-soft:#352a10; --crit:#f2808b; --crit-soft:#3a1c22;
+  --code:#11152a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0f1220; --surface:#181c2e; --surface-2:#1e2336; --line:#2b3150; --line-strong:#3b4266;
+  --fg:#e7e9f5; --muted:#9aa2c0; --brand:#8ea3ff; --brand-hover:#b0beff; --brand-soft:#252c57; --on-brand:#0b1030;
+  --ok:#59c95c; --ok-soft:#17301a; --warn:#eab04a; --warn-soft:#352a10; --crit:#f2808b; --crit-soft:#3a1c22;
+  --code:#11152a; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;margin:0}
+h1,h2,h3,h4{margin:0;font-weight:600;text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.mono{font-family:var(--mono);font-size:12px}
+.muted{color:var(--muted)} .small{font-size:12px}
+[data-mx]{position:relative}
+
+/* app chrome (what Atlas_Default already provides) */
+.shell{display:grid;grid-template-columns:216px minmax(0,1fr);grid-template-rows:48px 1fr;min-height:100vh}
+.top{grid-column:1/-1;background:var(--nav);color:#fff;display:flex;align-items:center;gap:12px;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.top b{font-size:15px;margin-right:auto;letter-spacing:.01em}
+.top .tool{display:flex;gap:8px;align-items:center}
+.tbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:4px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}
+.tbtn:hover{background:rgba(255,255,255,.2)}
+.tbtn[aria-pressed="true"]{background:#fff;color:var(--nav)}
+.sidebar{background:var(--side);padding:10px 0 10px max(0px,env(safe-area-inset-left,0px))}
+.sidebar a{display:block;padding:9px 18px;color:var(--side-fg);text-decoration:none;font-size:13px;border-left:3px solid transparent;cursor:default}
+.sidebar a.on{background:rgba(255,255,255,.1);color:#fff;font-weight:600;border-left-color:#7f95ff}
+.sidebar a.dim{opacity:.55}
+.sidebar small{display:block;padding:14px 18px 4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#8d92d1}
+.canvas{padding:24px max(24px,env(safe-area-inset-right,0px)) 56px 28px;min-width:0}
+.page{max-width:1080px}
+.ph{margin-bottom:16px}
+.ph h1{font-size:24px;line-height:1.25}
+.ph p{color:var(--muted);margin-top:4px}
+
+/* Atlas tab container, Style: Lined */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0;overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:10px 16px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button:hover{color:var(--fg)}
+.tabs button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+
+/* cards (needs small SCSS: stock Atlas has no card class) */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 2px rgba(10,19,36,.05)}
+.card+.card,.stack>*+*{margin-top:16px}
+.card>.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card>.hd h3{font-size:15px}
+.card>.hd p{font-size:12px;color:var(--muted);margin-top:2px}
+.card>.bd{padding:18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:16px}
+
+/* Atlas form + buttons */
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>label,.lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;border:1px solid var(--line-strong);background:var(--surface);border-radius:4px;padding:7px 10px;min-width:0}
+textarea{resize:vertical;min-height:84px;line-height:1.5}
+input[readonly],textarea[readonly]{background:var(--surface-2);color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--brand)}
+.rl{display:flex;align-items:center;gap:10px}.rl output{font-family:var(--mono);font-size:12px;min-width:36px;text-align:right}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);background:var(--surface);border-radius:4px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:13px;line-height:1.3}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.btn.primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn.success{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.danger{color:var(--crit);border-color:var(--crit);background:transparent}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.link{border-color:transparent;background:transparent;color:var(--brand);padding:4px 8px}
+.btn.link:hover{background:var(--brand-soft)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.label{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.label.primary{background:var(--brand);color:var(--on-brand)}
+.label.success{background:var(--ok);color:#fff}.label.warning{background:#eca51c;color:#2b1c00}.label.danger{background:var(--crit);color:#fff}
+.label.default{background:var(--line);color:var(--fg)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--brand-soft);color:var(--brand);white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.warn{background:var(--warn-soft);color:var(--warn)} .badge.bad{background:var(--crit-soft);color:var(--crit)}
+
+/* Data Grid 2 */
+.dg{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:10px 16px;border-bottom:1px solid var(--line-strong);background:var(--surface-2);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.clk{cursor:pointer}
+tbody tr:hover td{background:var(--surface-2)}
+.dgfoot{display:flex;justify-content:space-between;gap:12px;padding:10px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+.empty{padding:32px;text-align:center;color:var(--muted)}
+.name{font-weight:600}
+.sub{font-size:12px;color:var(--muted)}
+.ellip{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:90px}
+.pbar i{display:block;height:100%;background:var(--brand);border-radius:4px}
+.pbar.ok i{background:var(--ok)}
+
+/* Accordion */
+.acc{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.acc>button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;background:transparent;border:0;padding:12px 16px;cursor:pointer;font-weight:600;text-align:left}
+.acc>button .sum{font-weight:400;color:var(--muted);font-size:12px}
+.acc>button svg{flex:none;transition:transform .15s}
+.acc.open>button svg{transform:rotate(180deg)}
+.acc>.in{padding:4px 16px 16px;border-top:1px solid var(--line)}
+.acc.flat{border:0;border-top:1px solid var(--line);border-radius:0;background:transparent}
+.acc.flat>button{padding-inline:0}
+.acc.flat>.in{padding-inline:0;border-top:0}
+
+/* notices (Atlas: container + background colour) */
+.note{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:4px;font-size:13px;background:var(--brand-soft);color:var(--fg)}
+.note.warn{background:var(--warn-soft)} .note.bad{background:var(--crit-soft)} .note.good{background:var(--ok-soft)}
+.note b{font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.steps{display:flex;gap:12px;align-items:center}
+.stepno{width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.resp{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:12px 16px;overflow-wrap:anywhere}
+.resp p+p,.resp ul{margin-top:8px}.resp ul{padding-left:20px;margin-bottom:0}
+.meta{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.meta b{color:var(--fg)}
+pre.code{margin:0;background:var(--code);border:1px solid var(--line);border-radius:4px;padding:10px 12px;overflow:auto;max-height:240px;font-family:var(--mono);font-size:12px;line-height:1.5}
+.vals{font-family:var(--mono);font-size:12px;background:var(--code);border:1px solid var(--line);border-radius:4px;padding:10px 12px;overflow-wrap:anywhere}
+.kvl{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr);gap:8px 16px;font-size:13px}
+.kvl dt{color:var(--muted);font-weight:600;font-size:12px;padding-top:2px}.kvl dd{margin:0;overflow-wrap:anywhere}
+.lock{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+
+/* setup checklist */
+.ready{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:10px 18px;padding:16px 18px}
+.ri{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.ri .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none;margin-top:1px}
+.ri .ic.ok{background:var(--ok-soft);color:var(--ok)} .ri .ic.no{background:var(--warn-soft);color:var(--warn)}
+.ri b{display:block;font-size:13px;font-weight:600}.ri span.d{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+
+/* popup pages, blocking progress, toast, message dialog */
+.overlay{position:fixed;inset:0;background:rgba(5,8,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(28px,env(safe-area-inset-top,0px)) 16px 28px;overflow:auto;z-index:50}
+.overlay.blocking{align-items:center;background:rgba(255,255,255,.55);z-index:80}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .overlay.blocking{background:rgba(10,12,28,.6)}}
+:root[data-theme="dark"] .overlay.blocking{background:rgba(10,12,28,.6)}
+.popup{background:var(--surface);border-radius:6px;width:min(680px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.popup.wide{width:min(780px,100%)}
+.popup.small{width:min(460px,100%)}
+.popup>.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.popup>.hd h3{font-size:16px}
+.popup>.bd{padding:20px;display:flex;flex-direction:column;gap:16px}
+.popup>.ft{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;background:var(--surface-2);border-radius:0 0 6px 6px}
+.blockbox{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 22px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.2);font-weight:600}
+.spin{width:16px;height:16px;border:2px solid var(--brand);border-right-color:transparent;border-radius:50%;display:inline-block;animation:r .7s linear infinite;flex:none}
+@keyframes r{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.5s}.acc>button svg{transition:none}}
+.toast{position:fixed;right:max(20px,env(safe-area-inset-right,0px));top:64px;background:var(--ok);color:#fff;padding:10px 18px;border-radius:4px;font-weight:600;font-size:13px;z-index:90;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:calc(100% - 40px)}
+.toast.bad{background:var(--crit)}
+
+/* Ask tickets tab (new): composer, thread of answers, source cards */
+.ask-wrap{max-width:860px}
+.ask-bar{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.composer textarea{min-height:92px;font-size:15px;border-radius:6px;padding:12px 14px}
+.composer .tools{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.sug{border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:5px 13px;font-size:12px;cursor:pointer;color:var(--fg)}
+.sug:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.sugs{display:flex;gap:8px;flex-wrap:wrap}
+.entry{margin-top:16px}
+.entry .qhd{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:14px 18px;background:var(--surface-2);border-bottom:1px solid var(--line);border-radius:6px 6px 0 0}
+.entry .qhd .q{font-weight:600;font-size:15px;overflow-wrap:anywhere}
+.entry .qhd .tm{font-size:12px;color:var(--muted);white-space:nowrap}
+.entry .ans{padding:16px 18px;font-size:14.5px;line-height:1.65;overflow-wrap:anywhere}
+.entry .ans p+p,.entry .ans ul{margin-top:10px}.entry .ans ul{padding-left:20px;margin-bottom:0}
+.entry .srch{padding:0 18px 16px}
+.srcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;margin-top:8px}
+.src{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.src .shd{display:flex;gap:8px;align-items:flex-start}
+.src .n{width:20px;height:20px;border-radius:4px;background:var(--brand-soft);color:var(--brand);font-weight:700;font-size:11px;display:grid;place-items:center;flex:none;margin-top:1px}
+.src .t{font-weight:600;font-size:13px;line-height:1.35}
+.src .d{font-size:12px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.entry .ft{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;padding:10px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.entry .ft .sp{margin-left:auto}
+.emptyask{text-align:center;padding:36px 18px;color:var(--muted)}
+.emptyask h3{color:var(--fg);margin-bottom:6px;font-size:16px}
+.strict{font-size:12px;font-weight:600;color:var(--muted);min-width:64px;text-align:right}
+.guide-run{margin-top:6px}
+.drawer ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.drawer ol li{display:block;border:1px solid var(--line);border-radius:6px;padding:12px}
+.drawer ol li b{display:block;font-size:13px;margin-bottom:2px}
+.drawer ol li span{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+
+/* mapping overlay + notes drawer */
+body.mx [data-mx]{outline:1.5px dashed var(--t-ok);outline-offset:2px}
+body.mx [data-mx][data-c="css"]{outline-color:var(--t-css)}
+body.mx [data-mx][data-c="flow"]{outline-color:var(--t-flow)}
+body.mx [data-mx]::after{content:attr(data-mx);position:absolute;top:-10px;left:6px;background:var(--t-ok);color:#fff;font:600 10px/1.55 var(--mono);padding:0 6px;border-radius:3px;z-index:30;white-space:nowrap;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+body.mx [data-mx][data-c="css"]::after{background:var(--t-css)}
+body.mx [data-mx][data-c="flow"]::after{background:var(--t-flow)}
+.legend{display:none;gap:12px;font-size:11px;font-weight:600;align-items:center;margin-left:4px;color:#fff}
+body.mx .legend{display:flex}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.drawer{position:fixed;top:48px;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-10px 0 30px rgba(0,0,0,.18);z-index:40;overflow:auto;padding:20px max(20px,env(safe-area-inset-right,0px)) 40px 20px}
+.drawer h3{font-size:15px;margin:22px 0 8px}.drawer h3:first-of-type{margin-top:14px}
+.drawer ul{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.drawer li{display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.drawer li .k{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;margin-top:1px}
+.k.y{background:var(--t-ok)}.k.c{background:var(--t-css)}.k.f{background:var(--t-flow)}.k.n{background:var(--crit)}
+.drawer code{font-family:var(--mono);font-size:11.5px;background:var(--code);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{display:none}
+  .canvas{padding:18px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px))}
+  .legend{display:none!important}
+  .kvl{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+
+<div class="shell">
+  <header class="top">
+    <b>GenAI Showcase</b>
+    <span class="legend"><span><i style="background:var(--t-ok)"></i>Stock widget</span><span><i style="background:var(--t-css)"></i>Small SCSS</span><span><i style="background:var(--t-flow)"></i>Microflow work</span></span>
+    <div class="tool">
+      <button class="tbtn" id="bMx" aria-pressed="false" data-act="mx">Mendix mapping</button>
+      <button class="tbtn" id="bGuide" aria-pressed="false" data-act="guide">Test guide</button>
+      <button class="tbtn" id="bNotes" aria-pressed="false" data-act="notes">Build notes</button>
+    </div>
+  </header>
+  <nav class="sidebar" aria-label="App menu">
+    <small>Showcase</small>
+    <a class="dim">Home</a><a class="dim">Configuration</a><a class="dim">Chat completions</a><a class="dim">Embeddings</a>
+    <a class="on" aria-current="page">AWS Bedrock Implementation</a>
+    <a class="dim">PgVector DB Config</a><a class="dim">Administration</a>
+  </nav>
+  <main class="canvas"><div class="page" id="page"></div></main>
+</div>
+<aside class="drawer" id="drawer" hidden aria-label="Build notes"></aside>
+<aside class="drawer" id="guide" hidden aria-label="Test guide"></aside>
+<div id="layer"></div>
+
+<script>
+/* =====================================================================
+   MOCK BACKEND. Each function is named after the microflow that replaces it.
+   Everything below this block is UI that maps 1:1 to Mendix widgets.
+   ===================================================================== */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const FAMILY = {
+  claude: { label:'Anthropic Claude', short:'Claude', kind:'chat',      style:'primary' },
+  cohere: { label:'Cohere Embed',     short:'Cohere', kind:'embedding', style:'success' },
+  titan:  { label:'Amazon Titan Embeddings V2', short:'Titan', kind:'embedding', style:'warning' },
+};
+const ENV = { auth:'Web identity (IRSA)', role:'arn:aws:iam::123456789012:role/genai-showcase-bedrock', token:'/var/run/secrets/eks.amazonaws.com/serviceaccount/token', encKey:true };
+const DB = {
+  config: { chat:'m1', emb:'m2', pg:'p1', region:'eu-central-1', gid:'', gver:0, awsOk:true, awsAt:Date.now()-5*3600e3, chunksModel:'m2', chunksAt:Date.now()-2*3600e3 },
+  models: [
+    { id:'m1', name:'Claude Sonnet 5',          modelId:'eu.anthropic.claude-sonnet-5',   family:'claude', maxTokens:5000, effort:'high' },
+    { id:'m2', name:'Cohere Embed v4',          modelId:'eu.cohere.embed-v4:0',            family:'cohere', dim:1024, inputType:'search_document', truncate:'RIGHT' },
+    { id:'m3', name:'Titan Text Embeddings V2', modelId:'amazon.titan-embed-text-v2:0',    family:'titan',  dim:1024, normalize:true },
+  ],
+  pgs: [ { id:'p1', name:'atlas-ceba-pp-vectordb', jdbc:'jdbc:postgresql://localhost:5432/bedrock_vectordb', user:'postgres', hasPw:true, tested:true } ],
+  tickets: [], chunks: null,
+};
+const SAMPLE = [
+  ['Unable to Save Document','Every time I try to save my document, the software crashes and I lose all unsaved work. This has happened multiple times.','Bug','In Progress','1. Open the word processor. 2. Create a new document. 3. Add text to the document. 4. Attempt to save the document.'],
+  ['Font Changes Not Saving','When I change the font of my document, the changes do not save. When I open the document again, it reverts back to the original font.','Bug','Open','1. Open an existing document. 2. Change the font. 3. Save the document. 4. Close and reopen the document.'],
+  ['Print Preview Not Accurate','The print preview does not accurately reflect the formatting of my document. This makes it difficult to ensure my document will print correctly.','Bug','Closed',''],
+  ['Cannot Insert Images','I am unable to insert images into my document. Every time I try, the software freezes and I have to restart it.','Bug','In Progress',''],
+  ['Copy-Paste Function Not Working','The copy-paste function does not work correctly. When I paste, the formatting changes and the text becomes unreadable.','Bug','Open',''],
+  ['Error when submitting the form','I encounter an error every time I try to submit the form on the website. It gives me a Submission failed message and the form data is not sent.','Bug','Open',''],
+  ['Form submission not working','I am unable to submit the form on the website. When I click the Submit button, nothing happens and the form data is not processed.','Bug','Open',''],
+  ['Issue with form data not being sent','The form data is not being sent when I attempt to submit the form on the website. There is no indication of any error, but the data does not reach the destination.','Bug','Open',''],
+  ['Issues with downloading attachments','I am experiencing difficulties when attempting to download email attachments. The download process fails and I receive an error message indicating Attachment download failed.','Bug','Closed',''],
+  ['Challenges with accessing shared documents','I am encountering obstacles when trying to access shared documents on the network. An error message appears, stating Access denied despite having the appropriate permissions.','Bug','Open',''],
+  ['Cannot open cloud documents','My team stores documents on our shared cloud folder which I can not open. Since this morning I get an error that I do not have the correct access rights.','Bug','Closed',''],
+  ['Problems with printing PDF files','I am facing issues when attempting to print PDF files. The printing process encounters an error and I receive a message indicating Print job failed.','Bug','Closed',''],
+];
+const mdl = id => DB.models.find(m => m.id === id);
+const pgOf = id => DB.pgs.find(p => p.id === id);
+const byKind = k => DB.models.filter(m => FAMILY[m.family].kind === k);
+const ticketText = t => 'Subject: '+t.subject+'\nDescription: '+t.desc+(t.steps?'\nReproduction steps: '+t.steps:'');
+let nextTicket = 13;
+
+/* ACT_TicketList_RePopulate (existing) */
+function populateTickets(){
+  const d = Date.now()-3*3600e3;
+  DB.tickets = SAMPLE.map((t,i)=>({ id:i+1, subject:t[0], desc:t[1], category:t[2], status:t[3], steps:t[4], res:'', changed:d }));
+  nextTicket = 13;
+}
+/* tickets created or changed after the knowledge base was built (Ticket.ChangedDateTime > Config.ChunksCreatedAt) */
+function staleTickets(){
+  if(!DB.chunks) return 0;
+  const ids = new Set(DB.chunks.map(c=>c.t.id));
+  return DB.tickets.filter(t=>t.changed>DB.config.chunksAt || !ids.has(t.id)).length;
+}
+
+/* embedding stand-in: hashed bag of words, same idea as bedrock-local-emulator/aws-mock */
+const STOP = new Set('the a an i my me we our you your to of in on at for with and or but is are was were be been it its this that when every time each have has had do does did not no can from as by if then so how what why will would should could may also into out up about over after before again there their them they just'.split(' '));
+const stem = w => w.length>4 ? w.replace(/(ing|ed|es|s)$/,'').replace(/e$/,'') : w;
+function hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619) } return h>>>0 }
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296 } }
+const wc = {};
+function embed(text, dim, salt){
+  const v = new Float64Array(dim);
+  text.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w&&!STOP.has(w)).map(stem).forEach(w=>{
+    const k=salt+'|'+w+'|'+dim; if(!wc[k]){ const r=rng(hash(salt+w)); wc[k]=Array.from({length:dim},()=>r()*2-1) }
+    wc[k].forEach((x,i)=>v[i]+=x);
+  });
+  const n = Math.sqrt(v.reduce((s,x)=>s+x*x,0))||1; return Array.from(v,x=>x/n);
+}
+const cos = (a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+const estTok = s => Math.max(1,Math.round(s.trim().split(/\s+/).filter(Boolean).length*1.35));
+
+function answerFor(prompt, ctx){
+  const p = prompt.trim().replace(/\s+/g,' '), t = p.length>70?p.slice(0,67)+'…':p;
+  if (ctx && ctx.length){
+    return `Here is what the ticket data says about “${t}”.\n\n`+ctx.slice(0,3).map(c=>`- **${c.subject}** (ticket ${c.id}): ${c.desc.split('. ')[0].replace(/\.$/,'')}.`).join('\n')+
+      `\n\nThe closest match is **${ctx[0].subject}**. Start by checking whether the problem is reproducible with a fresh document, then compare against the resolution on that ticket. If the tickets disagree, ask the customer for the reproduction steps.`;
+  }
+  return `Happy to help with “${t}”.\n\nStart by pinning down the goal and the constraints, then compare the realistic options on cost, effort and risk. A practical next step is to try the smallest version that could work and measure it.`;
+}
+
+/* ACT_Connection_Test (NEW Java action: STS GetCallerIdentity + ListFoundationModels; the sts jar is already in userlib) */
+async function actTestAws(region){
+  await sleep(1200);
+  const ok = /^[a-z]{2}(-[a-z]+)+-\d$/.test(region.trim());
+  return { ok, steps:[
+    { ok:true, t:'Web identity token file found' },
+    { ok, t: ok?'Role assumed via STS':'Region “'+region+'” is not a valid AWS region' },
+    { ok, t: ok?'Caller: arn:aws:sts::123456789012:assumed-role/genai-showcase-bedrock/mendix-app':'Skipped' },
+    { ok, t: ok?'bedrock:ListFoundationModels allowed in '+region+' (41 models visible)':'Skipped' } ] };
+}
+/* PgVectorKnowledgeBase.ACT_DatabaseConfiguration_Test (EXISTING microflow in the pgvector module) */
+async function actTestPg(p){
+  await sleep(1100);
+  if(!/^jdbc:postgresql:\/\/.+/.test(p.jdbc)) return { ok:false, msg:'The JDBC URL must start with jdbc:postgresql://' };
+  if(!p.hasPw) return { ok:false, msg:'No password has been set for this database.' };
+  return { ok:true, msg:'Connected, and the pgvector extension is available.' };
+}
+/* ACT_Model_Try -> unified wrapper over ACT_AnthropicRequest_Send / ACT_CohereRequest_Send / ACT_TitalEmbeddingsV2Request_Send */
+async function actModelTry(m, input, o){
+  if (FAMILY[m.family].kind==='chat'){
+    const rawReq = { anthropic_version:'bedrock-2023-05-31', max_tokens:o.maxTokens, ...(o.system?{system:o.system}:{}), thinking:{type:'adaptive'}, output_config:{effort:o.effort}, messages:[{role:'user',content:input}] };
+    const text = answerFor(input,null), inTok=estTok((o.system||'')+' '+input), outTok=estTok(text), lat=900+outTok*8+Math.round(Math.random()*200);
+    await sleep(Math.min(1800,lat*.6));
+    return { kind:'chat', text, inTok, outTok, lat, rawReq, rawRes:{id:'msg_01XFD',type:'message',role:'assistant',model:m.modelId,content:[{type:'text',text}],stop_reason:'end_turn',usage:{input_tokens:inTok,output_tokens:outTok}} };
+  }
+  const dim = o.dim, vec = embed(input,dim,m.id);
+  const rawReq = m.family==='cohere' ? {texts:[input],input_type:o.inputType,embedding_types:['float'],output_dimension:dim,max_tokens:128000,truncate:o.truncate}
+                                     : {inputText:input,dimensions:dim,normalize:o.normalize,embeddingTypes:['float']};
+  const lat = 260+Math.round(Math.random()*180); await sleep(lat*.8);
+  return { kind:'embedding', vec, dim, lat, rawReq, rawRes: m.family==='cohere' ? {id:'a53c8268',embeddings:{float:[[...vec.slice(0,3).map(n=>+n.toFixed(5)),'… '+(dim-3)+' more']]},response_type:'embeddings_by_type'} : {embedding:[...vec.slice(0,3).map(n=>+n.toFixed(5)),'… '+(dim-3)+' more'],inputTextTokenCount:estTok(input)} };
+}
+/* ACT_TicketList_CreateChunks_StoreInVectorDB (embedding model and database now come from Config) */
+async function actCreateChunks(){
+  const m = mdl(DB.config.emb); await sleep(1700);
+  DB.chunks = DB.tickets.map((t,i)=>({ id:'c'+(i+1), human:'Ticket '+t.id, text:ticketText(t), t:{...t}, dim:m.dim, vec:embed(ticketText(t),m.dim,m.id), idx:i }));
+  DB.config.chunksModel = m.id; DB.config.chunksAt = Date.now();
+}
+/* ACT_Pagehelper_Send_SearchItem */
+async function actSearch(q,max,min){
+  const m = mdl(DB.config.emb); await sleep(700);
+  if (DB.chunks.length && DB.chunks[0].dim !== m.dim) return { error:`The knowledge base holds ${DB.chunks[0].dim}-dimension vectors but ${m.name} produces ${m.dim}. Create the chunks again.` };
+  const qv = embed(q,m.dim,m.id);
+  const res = DB.chunks.map(c=>({ ...c, sim: Math.max(0,Math.min(0.99,cos(qv,c.vec)*1.7)) })).filter(c=>c.sim>=min).sort((a,b)=>b.sim-a.sim).slice(0,max);
+  return { results:res };
+}
+/* ACT_PageHelper_PromptRequest_Send */
+async function actAsk(system,prompt,data,ctx){ await sleep(1300); return { text: answerFor(prompt,ctx) } }
+/* ACT_ListFoundationModels (existing Java returns one string; the message dialog shows it) */
+async function actListModels(){
+  await sleep(900);
+  return [['eu.anthropic.claude-sonnet-5','Anthropic','Claude Sonnet 5'],['eu.cohere.embed-v4:0','Cohere','Embed v4'],['amazon.titan-embed-text-v2:0','Amazon','Titan Text Embeddings V2'],['amazon.nova-pro-v1:0','Amazon','Nova Pro'],['meta.llama3-3-70b-instruct-v1:0','Meta','Llama 3.3 70B Instruct'],['mistral.mistral-large-2402-v1:0','Mistral AI','Mistral Large (24.02)']];
+}
+
+/* =====================================================================
+   UI STATE + RENDER
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const chev = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+const lockI = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
+const md = s => { let h = esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>'); const L=h.split('\n'); let o='',ul=false; for(const l of L){ if(/^- /.test(l)){ if(!ul){o+='<ul>';ul=true} o+='<li>'+l.slice(2)+'</li>' } else { if(ul){o+='</ul>';ul=false} if(l.trim()) o+='<p>'+l+'</p>' } } return o+(ul?'</ul>':'') };
+const ago = ts => { const m=(Date.now()-ts)/60e3; if(m<2) return 'just now'; if(m<90) return Math.round(m)+' min ago'; const h=m/60; return h<36?Math.round(h)+' h ago':Math.round(h/24)+' d ago' };
+
+const S = {
+  tab:'connections', open:{chunks:false,ctx:false,raw:false,adv:false}, mx:false, notes:false, popup:null,
+  awsResult:null,
+  tr:{ modelId:'m1', system:'', input:'Explain in two sentences what a vector embedding is.', result:null, maxTokens:null, effort:null, dim:null, inputType:null, truncate:null, normalize:null },
+  ed:null, pgEd:null, tk:null, tq:'',
+  search:{ q:'My app crashes when I try to save a document', max:5, min:0.25, results:null, ctx:[], err:null },
+  ask:{ system:'You are a support assistant. Answer using the ticket data.', prompt:'What could be the cause and how should we respond to the customer?', resp:null },
+  conn:{ region:DB.config.region, gid:DB.config.gid, gver:DB.config.gver },
+  guide:false,
+  ask2:{ q:'', max:5, min:0.25, system:'You are a support assistant. Answer only from the numbered tickets and cite them like [1].', entries:[], opt:false },
+};
+const ROUTES = ['connections','models','tickets','ask','ask2'];
+function setTab(t){ if(!ROUTES.includes(t)) t='connections'; S.tab=t; render(); if(location.hash.slice(1)!==t) history.replaceState(null,'','#'+t) }
+function toast(t,bad){ const e=document.createElement('div'); e.className='toast'+(bad?' bad':''); e.textContent=t; document.body.appendChild(e); setTimeout(()=>e.remove(),2600) }
+const mx = (t,c) => `data-mx="${t}" data-c="${c||'ok'}"`;
+const optList = (arr,sel)=>arr.map(v=>`<option ${v===sel?'selected':''}>${v}</option>`).join('');
+
+/* ---------------- setup checklist (above the tabs) ---------------- */
+function readiness(){
+  const c=DB.config, pg=pgOf(c.pg), st=staleTickets();
+  return [
+    { ok:c.awsOk, l:'AWS connection', d:c.awsOk?'Tested '+ago(c.awsAt)+' · '+c.region:'Not tested. Use Test connection.', where:'Connections' },
+    { ok:ENV.encKey, l:'Encryption key', d:ENV.encKey?'Environment constant is set':'Set the Encryption key constant', where:'Environment' },
+    { ok:!!pg&&pg.tested, l:'Vector database', d:!pg?'No database selected':pg.tested?pg.name:'“'+pg.name+'” not tested', where:'Connections' },
+    { ok:!!mdl(c.chat), l:'Chat model', d:mdl(c.chat)?mdl(c.chat).name:'Pick one', where:'Models' },
+    { ok:!!mdl(c.emb), l:'Embedding model', d:mdl(c.emb)?mdl(c.emb).name+' · '+mdl(c.emb).dim+' dims':'Pick one', where:'Models' },
+    { ok:DB.tickets.length>0, l:'Tickets', d:DB.tickets.length?DB.tickets.length+' tickets loaded':'No tickets. Load samples or add some.', where:'Tickets' },
+    { ok:!!DB.chunks && c.chunksModel===c.emb && st===0, l:'Knowledge base', d:!DB.chunks?'Not built yet':c.chunksModel!==c.emb?'Built with '+(mdl(c.chunksModel)?.name||'another model')+'. Rebuild.':st?st+' ticket'+(st>1?'s':'')+' changed since it was built. Rebuild.':DB.chunks.length+' chunks stored', where:'Tickets' },
+  ];
+}
+function vReady(){
+  const R=readiness(), n=R.filter(r=>r.ok).length;
+  return `<div class="card" ${mx('Data view · DS_Config → Config · items = containers with Visible expressions · Progress bar widget','flow')}>
+    <div class="hd"><div><h3>Setup status</h3><p>${n===R.length?'Everything is ready. The demo tabs will work.':'Finish the open items to get the demo working.'}</p></div>
+      <div class="row" style="min-width:200px;flex:0 1 260px"><div class="pbar ${n===R.length?'ok':''}" style="flex:1" ${mx('Progress bar widget · expression','ok')}><i style="width:${n/R.length*100}%"></i></div><b class="mono">${n} of ${R.length}</b></div></div>
+    <div class="ready">${R.map(r=>`<div class="ri"><span class="ic ${r.ok?'ok':'no'}" aria-hidden="true">${r.ok?'✓':'!'}</span><div><b>${r.l}</b><span class="d">${esc(r.d)}${r.ok?'':' <span class="muted">('+r.where+')</span>'}</span></div></div>`).join('')}</div>
+  </div>`;
+}
+
+function render(){
+  $('#page').innerHTML = `
+    <div class="ph" ${mx('Container · class aws-bedrock-page · Dynamic text H2 + paragraph','ok')}><h1>AWS Bedrock demo</h1><p>Set up your connections and models, load tickets, then try Claude chat, embeddings and ticket search backed by pgvector.</p></div>
+    ${vReady()}
+    <div class="tabs" role="tablist" ${mx('Tab container · Style: Lined (Atlas design property)','ok')}>
+      ${[['connections','Connections'],['models','Models'],['tickets','Tickets'],['ask','Search and ask'],['ask2','Ask tickets <span class="badge" style="margin-left:6px">New</span>']].map(([k,l])=>`<button role="tab" aria-selected="${S.tab===k}" data-act="tab" data-v="${k}">${l}</button>`).join('')}
+    </div>
+    ${S.tab==='connections'?vConnections():S.tab==='models'?vModels():S.tab==='tickets'?vTickets():S.tab==='ask'?vAsk():vAsk2()}`;
+  renderDrawer();
+}
+
+/* ---------------- CONNECTIONS ---------------- */
+function vConnections(){
+  const c=DB.config, r=S.awsResult;
+  return `
+  <div class="card" ${mx('Data view · DS_Config → Config (existing entity)','ok')}>
+    <div class="hd"><div><h3>AWS Bedrock</h3><p>Region and guardrail are saved in the app. Credentials come from the environment.</p></div>
+      <div class="row"><button class="btn" data-act="testaws" ${mx('Action button · ACT_Connection_Test (new Java: STS identity + ListFoundationModels) · progress: Blocking','flow')}>Test connection</button>
+      <button class="btn success" data-act="saveconn" ${mx('Action button · ACT_Config_Save (existing)','ok')}>Save</button></div></div>
+    <div class="bd stack">
+      <div ${mx('Container · read-only dynamic texts (values read by Java from env / JVM parameters)','flow')}>
+        <div class="row" style="margin-bottom:10px"><span class="lbl">Credentials</span><span class="lock">${lockI} Set by the platform, not editable here</span></div>
+        <dl class="kvl" style="margin:0"><dt>Authentication</dt><dd>${ENV.auth}</dd><dt>Role</dt><dd class="mono">${ENV.role}</dd><dt>Token file</dt><dd class="mono">${ENV.token}</dd></dl>
+      </div>
+      <div class="grid3">
+        <div class="field"><label for="cRegion">Bedrock region</label><input type="text" id="cRegion" value="${esc(S.conn.region)}"></div>
+        <div class="field"><label for="cGid">Guardrail identifier</label><input type="text" id="cGid" value="${esc(S.conn.gid)}" placeholder="Optional"></div>
+        <div class="field"><label for="cGver">Guardrail version</label><input type="number" id="cGver" value="${S.conn.gver}"></div>
+      </div>
+      ${r?`<div class="note ${r.ok?'good':'bad'}" ${mx('Container · list of result lines (non-persistent TestResult list)','flow')}><div style="display:flex;flex-direction:column;gap:4px"><b>${r.ok?'Connection works':'Connection failed'}</b>${r.steps.map(s=>`<span>${s.ok?'✓':'✗'} ${esc(s.t)}</span>`).join('')}</div></div>`:''}
+    </div>
+  </div>
+
+  <div class="card" ${mx('Data grid 2 · database PgVectorKnowledgeBase.DatabaseConfiguration (other module)','css')}>
+    <div class="hd"><div><h3>Vector database</h3><p>PostgreSQL with the pgvector extension. The password is stored encrypted.</p></div>
+      <button class="btn primary" data-act="addpg" ${mx('Action button · call microflow PgVectorKnowledgeBase.ACT_DatabaseConfiguration_New (existing)','css')}>New database</button></div>
+    <div class="bd" style="padding-bottom:0"><div class="field" style="max-width:420px" ${mx('Combo box · Config_DatabaseConfiguration (new association) · replaces hardcoded name in 4 flows','flow')}><label for="selPg">Database used for the ticket knowledge base</label>
+      <select id="selPg" data-sel="pg">${DB.pgs.map(p=>`<option value="${p.id}" ${p.id===c.pg?'selected':''}>${esc(p.name)}</option>`).join('')}${DB.pgs.length?'':'<option value="">No databases yet</option>'}</select></div></div>
+    <div class="dg" style="margin-top:14px"><table><thead><tr><th>Name</th><th>JDBC URL</th><th>User</th><th>Password</th><th>Status</th><th></th></tr></thead><tbody>
+      ${DB.pgs.length?DB.pgs.map(p=>`<tr class="clk" data-act="editpg" data-id="${p.id}">
+        <td><div class="name">${esc(p.name)}</div>${p.id===c.pg?'<span class="badge">Used for tickets</span>':''}</td>
+        <td class="mono" style="max-width:300px;overflow-wrap:anywhere">${esc(p.jdbc)}</td><td class="mono">${esc(p.user)}</td>
+        <td class="mono">${p.hasPw?'••••••••':'<span style="color:var(--crit)">Not set</span>'}</td>
+        <td>${p.tested?'<span class="badge ok">Connected</span>':'<span class="badge warn">Not tested</span>'}</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm" data-act="testpg" data-id="${p.id}" ${mx('Column button · ACT_DatabaseConfiguration_Test (existing) · progress: Blocking','css')}>Test</button> <button class="btn sm link" data-act="delpg" data-id="${p.id}" aria-label="Delete ${esc(p.name)}">Delete</button></td></tr>`).join(''):`<tr><td colspan="6"><div class="empty">No vector database yet. Click New database.</div></td></tr>`}
+    </tbody></table></div>
+    <div class="dgfoot"><span>${DB.pgs.length} database${DB.pgs.length===1?'':'s'}</span><span>Click a row to edit</span></div>
+  </div>`;
+}
+
+/* ---------------- MODELS ---------------- */
+function famLabel(m){ const f=FAMILY[m.family]; return `<span class="label ${f.style}">${f.short}</span>` }
+function settingsOf(m){ return m.family==='claude' ? `max ${m.maxTokens} tokens · effort ${m.effort}` : m.family==='cohere' ? `${m.dim} dims · ${m.inputType}` : `${m.dim} dims · ${m.normalize?'normalized':'raw'}` }
+function vModels(){
+  const c=DB.config, chat=byKind('chat'), emb=byKind('embedding');
+  const opt=(l,sel)=>l.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${esc(m.name)}</option>`).join('');
+  return `
+  <div class="card" ${mx('Container · Data view · DS_Config → Config (2 new associations)','flow')}>
+    <div class="hd"><div><h3>Models in use</h3><p>These two models are used by the Tickets and Search and ask tabs.</p></div></div>
+    <div class="bd stack" style="padding-bottom:18px">
+      <div class="grid2">
+        <div class="field" ${mx('Combo box · Config_ChatModel · options: DB XPath [Family = Claude]','ok')}><label for="selChat">Chat model</label><select id="selChat" data-sel="chat">${opt(chat,c.chat)}</select><span class="hint mono">${esc(mdl(c.chat).modelId)}</span></div>
+        <div class="field" ${mx('Combo box · Config_EmbeddingModel · options: DB XPath [Family != Claude]','ok')}><label for="selEmb">Embedding model</label><select id="selEmb" data-sel="emb">${opt(emb,c.emb)}</select><span class="hint mono">${esc(mdl(c.emb).modelId)} · ${mdl(c.emb).dim} dimensions</span></div>
+      </div>
+      ${DB.chunks && c.chunksModel!==c.emb?`<div class="note warn" ${mx('Container · Background: warning · visible expression on ChunksModelId','flow')}><span><b>The knowledge base was built with ${esc(mdl(c.chunksModel)?.name||'another model')}.</b> Rebuild the chunks on the Tickets tab, otherwise search results will be poor.</span></div>`:''}
+    </div>
+  </div>
+  <div class="card" ${mx('Data grid 2 · database BedrockModel (new entity) · Row click → pop-up BedrockModel_Edit','ok')}>
+    <div class="hd"><div><h3>Models</h3><p>Add the Bedrock models you want to use. The family decides how the request is built.</p></div>
+      <div class="row">
+        <button class="btn" data-act="listaws" ${mx('Action button · ACT_ListFoundationModels (existing)','ok')}>List models in AWS</button>
+        <button class="btn primary" data-act="addmodel" ${mx('Action button · Create object BedrockModel → pop-up BedrockModel_Edit','ok')}>Add model</button>
+      </div></div>
+    <div class="dg"><table><thead><tr><th>Name</th><th>Family</th><th>Settings</th><th>In use</th><th></th></tr></thead><tbody>
+      ${DB.models.map(m=>`<tr class="clk" data-act="editmodel" data-id="${m.id}">
+        <td><div class="name">${esc(m.name)}</div><div class="mono sub">${esc(m.modelId)}</div></td>
+        <td ${mx('Custom content column · Label widget (Style from Family)','ok')}>${famLabel(m)}</td>
+        <td class="mono">${settingsOf(m)}</td>
+        <td>${m.id===c.chat?'<span class="badge">Chat</span> ':''}${m.id===c.emb?'<span class="badge ok">Embeddings</span>':''}</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm" data-act="trymodel" data-id="${m.id}" ${mx('Column action button · pop-up BedrockModel_Try','ok')}>Try</button> <button class="btn sm link" data-act="delmodel" data-id="${m.id}" aria-label="Delete ${esc(m.name)}">Delete</button></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="dgfoot"><span>${DB.models.length} models</span><span>Click a row to edit</span></div>
+  </div>`;
+}
+
+/* ---------------- TICKETS (master data) ---------------- */
+function vTickets(){
+  const c=DB.config, em=mdl(c.emb), pg=pgOf(c.pg), st=staleTickets(), modelStale = DB.chunks && c.chunksModel!==c.emb;
+  const L=DB.tickets.filter(t=>t.subject.toLowerCase().includes(S.tq.toLowerCase()));
+  return `
+  <div class="card">
+    <div class="hd"><div><h3>Ticket knowledge base</h3><p>Split the tickets into chunks and embed them into the pgvector knowledge base.</p></div>
+      <button class="btn primary" data-act="chunks" ${DB.tickets.length&&pg?'':'disabled'} ${mx('Action button · ACT_TicketList_CreateChunks_StoreInVectorDB (existing; model + database from Config) · progress: Blocking','flow')}>${DB.chunks?'Rebuild':'Create'} chunks and store in knowledge base</button></div>
+    <div class="bd stack" style="padding-bottom:18px">
+      <div class="chips" ${mx('Container · Dynamic texts from Config associations','flow')}><span class="lbl">Embedding model</span><span class="badge ok">${esc(em.name)} · ${em.dim} dims</span><span class="lbl" style="margin-left:8px">Database</span><span class="badge ${pg&&pg.tested?'ok':'warn'}">${pg?esc(pg.name):'none selected'}</span><span class="hint">Change them on the Connections and Models tabs.</span></div>
+      ${!pg?`<div class="note bad"><span><b>No vector database selected.</b> Add one on the Connections tab.</span></div>`
+        : modelStale?`<div class="note warn"><span><b>Chunks were created with ${esc(mdl(c.chunksModel)?.name||'another model')}.</b> Rebuild so search uses ${esc(em.name)}.</span></div>`
+        : !DB.chunks?`<div class="note"><span><b>No chunks yet.</b> Create chunks to enable search.</span></div>`
+        : st?`<div class="note warn" ${mx('Container · count of Ticket where ChangedDateTime > Config/ChunksCreatedAt','flow')}><span><b>${st} ticket${st>1?'s':''} changed since the knowledge base was built.</b> Rebuild to include the changes.</span></div>`
+        : `<div class="note good"><span><b>${DB.chunks.length} chunks stored</b> in ${esc(pg.name)} with ${esc(em.name)}. Search and ask is ready.</span></div>`}
+    </div>
+  </div>
+  <div class="card" ${mx('Data grid 2 · DS_TicketList (existing) · Row click → pop-up Ticket_Edit','ok')}>
+    <div class="hd"><div><h3>Tickets</h3><p>The master data the demo searches. Edit them or load the sample set.</p></div>
+      <div class="row"><button class="btn" data-act="populate" ${mx('Action button · ACT_TicketList_RePopulate (existing) · add a confirmation text','ok')}>Load sample tickets</button>
+      <button class="btn primary" data-act="addticket" ${mx('Action button · Create object Ticket → pop-up Ticket_Edit','ok')}>Add ticket</button></div></div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--line)"><input type="text" id="tq" placeholder="Filter by subject" style="width:260px;max-width:100%" aria-label="Filter tickets" value="${esc(S.tq)}" ${mx('Text filter widget','ok')}></div>
+    <div class="dg"><table><thead><tr><th>Id</th><th>Subject</th><th>Category</th><th>Status</th><th>Changed</th><th></th></tr></thead><tbody>
+    ${L.length?L.map(t=>`<tr class="clk" data-act="editticket" data-id="${t.id}"><td class="mono">${t.id}</td><td><div class="name">${esc(t.subject)}</div><div class="sub ellip">${esc(t.desc)}</div></td><td>${esc(t.category)}</td><td><span class="label ${t.status==='Open'?'warning':t.status==='Closed'?'success':'primary'}">${t.status}</span></td><td class="sub">${ago(t.changed)}</td><td style="text-align:right"><button class="btn sm link" data-act="delticket" data-id="${t.id}" aria-label="Delete ticket ${t.id}">Delete</button></td></tr>`).join(''):`<tr><td colspan="6"><div class="empty">${DB.tickets.length?'No tickets match.':'No tickets yet. Load the sample tickets or add one.'}</div></td></tr>`}
+    </tbody></table></div>
+    <div class="dgfoot"><span>${DB.tickets.length} tickets</span><span>Click a row to edit</span></div>
+  </div>
+  <div class="acc ${S.open.chunks?'open':''}" style="background:var(--surface)" ${mx('Accordion · collapsed · Data grid 2 · DS_TicketChunkList (existing); technical columns hidable','ok')}>
+    <button data-act="acc" data-k="chunks" aria-expanded="${S.open.chunks}"><span>Stored chunks <span class="sum">${DB.chunks?DB.chunks.length+' in the knowledge base':'none'}</span></span>${chev}</button>
+    ${S.open.chunks?`<div class="in dg"><table style="margin-top:8px"><thead><tr><th>Human readable id</th><th>Input text</th><th>Embedding vector</th></tr></thead><tbody>
+      ${DB.chunks?DB.chunks.map(c=>`<tr><td class="mono">${c.human}</td><td><div class="ellip">${esc(c.text.replace(/\n/g,' · '))}</div></td><td class="mono sub">[${c.vec.slice(0,3).map(v=>v.toFixed(3)).join(', ')}, …]</td></tr>`).join(''):'<tr><td colspan="3"><div class="empty">Nothing stored yet.</div></td></tr>'}</tbody></table></div>`:''}
+  </div>`;
+}
+
+/* ---------------- SEARCH AND ASK ---------------- */
+function vAsk(){
+  const c=DB.config, cm=mdl(c.chat), em=mdl(c.emb), pg=pgOf(c.pg), s=S.search, a=S.ask, modelStale=DB.chunks&&c.chunksModel!==c.emb, st=staleTickets();
+  return `
+  <div class="chips" style="margin-bottom:16px" ${mx('Container · Dynamic texts from Config associations','flow')}><span class="lbl">Using</span><span class="badge">${esc(cm.name)}</span><span class="badge ok">${esc(em.name)}</span><span class="badge ${pg&&pg.tested?'ok':'warn'}">${pg?esc(pg.name):'no database'}</span></div>
+  ${!DB.chunks?`<div class="note warn" style="margin-bottom:16px"><span><b>The knowledge base is empty.</b> Create chunks on the Tickets tab first.</span></div>`:''}
+  ${modelStale?`<div class="note warn" style="margin-bottom:16px"><span><b>Chunks were created with ${esc(mdl(c.chunksModel)?.name||'another model')}.</b> Results will be poor until you rebuild them.</span></div>`:st&&DB.chunks?`<div class="note warn" style="margin-bottom:16px"><span><b>${st} ticket${st>1?'s':''} changed since the knowledge base was built.</b> Search does not see the changes yet.</span></div>`:''}
+  <div class="card" ${mx('Data view · DS_PageHelper (existing PageHelper)','ok')}>
+    <div class="hd"><div class="steps"><span class="stepno">1</span><div><h3>Find similar tickets</h3><p>Semantic search in the pgvector knowledge base.</p></div></div></div>
+    <div class="bd stack">
+      <div class="field"><label for="sq">Search item</label><textarea id="sq" style="min-height:64px">${esc(s.q)}</textarea></div>
+      <div class="grid2">
+        <div class="field"><label for="smax">Max results</label><input type="number" id="smax" min="1" max="12" value="${s.max}"></div>
+        <div class="field" ${mx('Slider widget · MinimumSimilarity (Decimal, step 0.05)','ok')}><label>Minimum similarity</label><div class="rl"><input type="range" id="smin" min="0" max="1" step="0.05" value="${s.min}"><output id="sminO">${s.min.toFixed(2)}</output></div></div>
+      </div>
+      <div><button class="btn primary" data-act="search" ${DB.chunks?'':'disabled'} ${mx('Action button · ACT_Pagehelper_Send_SearchItem (existing) · progress: Blocking','ok')}>Search</button></div>
+      ${s.err?`<div class="note bad"><span>${esc(s.err)}</span></div>`:''}
+      ${s.results?`<div class="card dg" style="box-shadow:none" ${mx('Data grid 2 · $PageHelper/TicketChunk_PageHelper · Similarity column = Progress bar widget','ok')}><table style="min-width:600px"><thead><tr><th>Ticket</th><th>Input text</th><th style="width:170px">Similarity</th></tr></thead><tbody>
+        ${s.results.length?s.results.map(r=>`<tr><td class="mono">${r.human}</td><td><div class="name">${esc(r.t.subject)}</div><div class="sub ellip">${esc(r.t.desc)}</div></td><td><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="pbar" style="flex:1"><i style="width:${r.sim*100}%"></i></div><span class="mono">${r.sim.toFixed(2)}</span></div></td></tr>`).join(''):'<tr><td colspan="3"><div class="empty">No tickets above the minimum similarity. Lower it or rephrase.</div></td></tr>'}</tbody></table></div>`:''}
+    </div>
+  </div>
+  <div class="card" ${mx('Data view · same PageHelper','ok')}>
+    <div class="hd"><div class="steps"><span class="stepno">2</span><div><h3>Ask ${esc(cm.name)}</h3><p>The tickets found above are sent as context with your prompt.</p></div></div></div>
+    <div class="bd stack">
+      <div class="field"><label for="asys">System request</label><textarea id="asys" style="min-height:56px">${esc(a.system)}</textarea></div>
+      <div class="field"><label for="apr">Prompt request</label><textarea id="apr" style="min-height:64px">${esc(a.prompt)}</textarea></div>
+      <div class="acc flat ${S.open.ctx?'open':''}" ${mx('Accordion · collapsed · Text area · PageHelper/TicketData (existing)','ok')}><button data-act="acc" data-k="ctx" aria-expanded="${S.open.ctx}"><span>Ticket data sent as context <span class="sum">${s.ctx.length?s.ctx.length+' tickets':'run a search first'}</span></span>${chev}</button>
+        ${S.open.ctx?`<div class="in"><textarea readonly style="min-height:120px;margin-top:10px">${esc(s.ctx.map(c=>ticketText(c)).join('\n\n'))}</textarea></div>`:''}</div>
+      <div><button class="btn primary" data-act="ask" ${mx('Action button · ACT_PageHelper_PromptRequest_Send (existing, model from Config) · progress: Blocking','flow')}>Send prompt request</button></div>
+      ${a.resp?`<div><div class="lbl" style="margin-bottom:6px">Prompt response</div><div class="resp" ${mx('Markdown widget · PageHelper/PromptResponse','ok')}>${md(a.resp)}</div></div>`:''}
+    </div>
+  </div>`;
+}
+
+/* ---------------- ASK TICKETS (new tab) ---------------- */
+const EXAMPLES = ['Why can’t users save their documents?','How should we reply to customers who cannot submit the form?','Which printing problems are already solved?','Are there any problems with shared or cloud documents?'];
+const strictLabel = v => v<0.2?'Loose':v<0.45?'Balanced':'Strict';
+/* ACT_Ask (NEW microflow): chains the existing search flow and the existing prompt flow, then creates an AskEntry */
+function answerCited(ctx){
+  const t=ctx[0], first=s=>s.split('. ')[0].replace(/\.$/,'');
+  return `**What the tickets say.** ${ctx.slice(0,3).map((c,i)=>`${c.subject} [${i+1}]`).join(', ')} describe closely related problems. The most similar one, ticket ${t.id} [1], reports: “${first(t.desc)}.”\n\n**Suggested reply**\n- Thank the customer and confirm you are looking into it.\n- Ask for the reproduction steps, as in ticket ${t.id} [1].\n- Offer the workaround from the matching ticket if it has one.\n\n**Next step** Link the related tickets so that one fix can close them all.`;
+}
+async function runAsk(q){
+  const a=S.ask2, c=DB.config, t0=performance.now();
+  block('Searching the tickets and asking '+mdl(c.chat).name+'…');
+  const r=await actSearch(q,a.max,a.min);
+  const base={ id:'e'+Date.now(), q, at:Date.now(), min:a.min, max:a.max, model:mdl(c.chat).name };
+  let entry;
+  if(r.error) entry={...base,error:r.error};
+  else if(!r.results.length) entry={...base,none:true};
+  else { await sleep(900+Math.random()*500); const ctx=r.results; entry={...base,answer:answerCited(ctx.map(x=>x.t)),sources:ctx,ctx:ctx.map(x=>x.t)}; }
+  entry.secs=(performance.now()-t0)/1000;
+  unblock(); a.entries.unshift(entry); a.q=''; render();
+  document.getElementById('a2q')?.focus({preventScroll:true});
+}
+function entryHtml(e){
+  const head=`<div class="qhd"><div><div class="lbl" style="margin-bottom:3px">You asked</div><div class="q">${esc(e.q)}</div></div><div class="tm">${ago(e.at)}</div></div>`;
+  if(e.error) return `<article class="card entry">${head}<div class="ans"><div class="note bad"><span>${esc(e.error)}</span></div></div></article>`;
+  if(e.none) return `<article class="card entry" ${mx('List view · AskEntry (non-persistent) · NoMatch = true shows this container','flow')}>${head}<div class="ans"><div class="note warn"><span><b>No tickets matched closely enough.</b> The strictness was ${strictLabel(e.min).toLowerCase()} (${e.min.toFixed(2)}), so nothing was sent to ${esc(e.model)}.</span></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="a2lower" data-id="${e.id}" ${mx('Action button · ACT_Ask with Strictness = Strictness − 0.15 (microflow parameter)','flow')}>Loosen the match and ask again</button><button class="btn" data-act="a2again" data-id="${e.id}">Ask again as is</button></div></div></article>`;
+  return `<article class="card entry" ${mx('List view · AskEntry (non-persistent) · sorted by CreatedDate desc','flow')}>${head}
+    <div class="ans" ${mx('Markdown widget · AskEntry/Answer','ok')}>${md(e.answer)}</div>
+    <div class="srch"><div class="lbl">Sources used (${e.sources.length})</div>
+      <div class="srcs" ${mx('List view · AskEntry_TicketChunk · cards = container + Progress bar widget','css')}>${e.sources.map((s,i)=>`<div class="src"><div class="shd"><span class="n">${i+1}</span><div><div class="t">${esc(s.t.subject)}</div><div class="sub">Ticket ${s.t.id} · ${esc(s.t.status)}</div></div></div><div class="d">${esc(s.t.desc)}</div><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="pbar" style="flex:1"><i style="width:${s.sim*100}%"></i></div><span class="mono">${s.sim.toFixed(2)}</span></div></div>`).join('')}</div></div>
+    <div class="acc flat" style="padding:0 18px"><button data-act="a2ctx" data-id="${e.id}" aria-expanded="${!!S.open['ctx'+e.id]}"><span>Exactly what was sent to the model</span>${chev}</button>${S.open['ctx'+e.id]?`<div class="in"><textarea readonly style="min-height:140px;font-family:var(--mono);font-size:12px">${esc(e.ctx.map((c,i)=>'['+(i+1)+'] '+ticketText(c)).join('\n\n'))}</textarea></div>`:''}</div>
+    <div class="ft"><span>${e.sources.length} tickets · ${e.secs.toFixed(1)} s · ${esc(e.model)}</span><span class="sp"><button class="btn sm link" data-act="a2again" data-id="${e.id}">Ask again</button></span></div></article>`;
+}
+function vAsk2(){
+  const c=DB.config, cm=mdl(c.chat), em=mdl(c.emb), pg=pgOf(c.pg), a=S.ask2, st=staleTickets(), modelStale=DB.chunks&&c.chunksModel!==c.emb, blocked=!DB.chunks||!pg;
+  return `<div class="ask-wrap">
+  <div class="ask-bar" ${mx('Container · Dynamic texts from Config associations (same as other tabs)','flow')}><span class="badge">${esc(cm.name)}</span><span class="badge ok">${esc(em.name)}</span><span class="badge ${pg&&pg.tested?'ok':'warn'}">${pg?esc(pg.name):'no database'}</span><span class="hint">${DB.chunks?DB.chunks.length+' tickets indexed':'nothing indexed'}</span></div>
+  ${!pg?`<div class="note bad" style="margin-bottom:14px"><span><b>No vector database selected.</b> Add one on the Connections tab.</span></div>`
+   : !DB.chunks?`<div class="note warn" style="margin-bottom:14px"><span style="flex:1"><b>The knowledge base is empty.</b> Index the tickets before you ask questions.</span><button class="btn sm primary" data-act="chunks" ${DB.tickets.length?'':'disabled'} ${mx('Action button · ACT_TicketList_CreateChunks_StoreInVectorDB (existing)','flow')}>Create chunks</button></div>`
+   : modelStale?`<div class="note warn" style="margin-bottom:14px"><span style="flex:1"><b>Tickets were indexed with ${esc(mdl(c.chunksModel)?.name||'another model')}.</b> Answers will be poor until you rebuild with ${esc(em.name)}.</span><button class="btn sm primary" data-act="chunks">Rebuild now</button></div>`
+   : st?`<div class="note warn" style="margin-bottom:14px"><span style="flex:1"><b>${st} ticket${st>1?'s':''} changed since indexing.</b> Answers do not include the changes yet.</span><button class="btn sm primary" data-act="chunks">Rebuild now</button></div>`:''}
+  <div class="card composer" ${mx('Data view · PageHelper (existing) + new attributes Question, Strictness, MaxTickets','flow')}><div class="bd">
+    <label class="lbl" for="a2q" style="display:block;margin-bottom:6px">Ask about your tickets</label>
+    <textarea id="a2q" placeholder="For example: why can’t users save their documents?" ${blocked?'disabled':''} ${mx('Text area · PageHelper/Question','ok')}>${esc(a.q)}</textarea>
+    <div class="sugs" style="margin-top:10px" ${mx('Container with 4 action buttons · each sets Question (Change object)','ok')}>${EXAMPLES.map((x,i)=>`<button class="sug" data-act="a2chip" data-i="${i}" ${blocked?'disabled':''}>${esc(x)}</button>`).join('')}</div>
+    <div class="acc flat ${a.opt?'open':''}" style="margin-top:12px" ${mx('Accordion · collapsed · replaces 3 always-visible fields','ok')}><button data-act="a2opt" aria-expanded="${a.opt}"><span>Options <span class="sum">${a.max} tickets · ${strictLabel(a.min).toLowerCase()} match</span></span>${chev}</button>
+      ${a.opt?`<div class="in"><div class="grid2" style="margin-top:14px">
+        <div class="field" ${mx('Slider widget · MaxTickets (Integer 1–10)','ok')}><label>Tickets to use</label><div class="rl"><input type="range" id="a2max" min="1" max="10" step="1" value="${a.max}"><output id="a2maxO">${a.max}</output></div></div>
+        <div class="field" ${mx('Slider widget · Strictness (Decimal) + Dynamic text label from expression','flow')}><label>Match strictness</label><div class="rl"><input type="range" id="a2min" min="0" max="1" step="0.05" value="${a.min}"><output id="a2minO">${a.min.toFixed(2)}</output><span class="strict" id="a2minL">${strictLabel(a.min)}</span></div></div></div>
+        <div class="field" style="margin-top:14px"><label for="a2sys">Instructions for the model</label><textarea id="a2sys" style="min-height:64px">${esc(a.system)}</textarea></div></div>`:''}</div>
+    <div class="tools"><span class="hint">Ctrl+Enter to ask</span><button class="btn primary" data-act="a2send" ${blocked?'disabled':''} ${mx('Action button · ACT_Ask (new): search + prompt in one click · progress: Blocking','flow')}>Ask</button></div>
+  </div></div>
+  ${a.entries.length?`<div class="row" style="justify-content:space-between;margin-top:20px"><h3 style="font-size:15px">Answers</h3><button class="btn sm link" data-act="a2clear" ${mx('Action button · delete all AskEntry in session','ok')}>Clear answers</button></div>${a.entries.map(entryHtml).join('')}`
+   :`<div class="emptyask"><h3>Ask your first question</h3><p>Pick an example above or write your own. You will see the answer, the tickets it is based on, and exactly what was sent to the model.</p></div>`}
+  </div>`;
+}
+
+/* ---------------- TEST GUIDE (mockup only, not part of the Mendix build) ---------------- */
+async function goAsk(q,opts){ closeAll(); setTab('ask2'); Object.assign(S.ask2,opts||{}); S.ask2.q=q; render(); await runAsk(q) }
+const GUIDE = [
+  ['1. A question with answers','Sends a real-looking question. Look for the numbered sources and the “Exactly what was sent” section.',()=>goAsk('Why can’t users save their documents?')],
+  ['2. Nothing relevant','Asks something the tickets cannot answer. Nothing is sent to the model; you get a way to loosen the match.',()=>goAsk('What is the weather in Paris?')],
+  ['3. Too strict','Uses the strictest match. Click “Loosen the match and ask again” twice and results appear.',()=>goAsk('customers complain about printing',{min:0.9,opt:true})],
+  ['4. A ticket changed','Edits a ticket after indexing. The tab warns you and offers Rebuild now.',()=>{ const t=DB.tickets[0]; t.subject+=' (updated)'; t.changed=Date.now(); setTab('ask2'); toast('Ticket 1 edited') }],
+  ['5. Different embedding model','Switches to Titan without rebuilding. Ask a question to see the warning, then click Rebuild now.',()=>{ DB.config.emb='m3'; setTab('ask2'); toast('Embedding model switched to Titan') }],
+  ['6. Empty knowledge base','Removes the index so you can see the empty state and the Create chunks button.',()=>{ DB.chunks=null; setTab('ask2'); toast('Index removed') }],
+  ['7. Reset everything','Reloads the mockup with the original data.',()=>location.reload()],
+];
+function renderGuide(){
+  const d=$('#guide'); d.hidden=!S.guide; if(!S.guide) return;
+  d.innerHTML='<h2 style="font-size:18px;margin:0">Test guide</h2><p class="muted small" style="margin:4px 0 14px">Each button sets up a situation and opens the Ask tickets tab. This panel only exists in the mockup.</p><ol>'+GUIDE.map((g,i)=>`<li><b>${g[0]}</b><span>${g[1]}</span><button class="btn sm ${i===0?'primary':''}" data-act="guiderun" data-i="${i}">Run</button></li>`).join('')+'</ol>';
+}
+
+/* ---------------- POP-UPS ---------------- */
+function drawTry(){
+  const t=S.tr, m=mdl(t.modelId), f=FAMILY[m.family], chat=f.kind==='chat';
+  if (t.maxTokens===null || t._for!==m.id){ Object.assign(t,{_for:m.id,maxTokens:m.maxTokens||5000,effort:m.effort||'high',dim:m.dim||1024,inputType:m.inputType||'search_document',truncate:m.truncate||'RIGHT',normalize:m.normalize!==false,result:null}); }
+  const r=t.result;
+  $('#layer').innerHTML = `<div class="overlay" data-act="closepop"><div class="popup wide" role="dialog" aria-modal="true" aria-label="Try a model" ${mx('Pop-up page · BedrockModel_Try · Data view (PageHelper) · Layout: PopupLayout','ok')}>
+    <div class="hd"><h3>Try a model</h3><button class="btn sm link" data-act="closepop" aria-label="Close">Close</button></div>
+    <div class="bd">
+      <div class="grid2"><div class="field" ${mx('Combo box · PageHelper_BedrockModel (all models)','ok')}><label for="tModel">Model</label><select id="tModel">${DB.models.map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select><span class="hint mono">${esc(m.modelId)}</span></div></div>
+      ${chat?`<div class="field"><label for="tSys">System prompt <span style="font-weight:400">(optional)</span></label><textarea id="tSys" style="min-height:52px">${esc(t.system)}</textarea></div>
+              <div class="field"><label for="tIn">Prompt</label><textarea id="tIn">${esc(t.input)}</textarea></div>`
+            :`<div class="field"><label for="tIn">Text to embed</label><textarea id="tIn">${esc(t.input)}</textarea></div>`}
+      <div class="acc ${S.open.adv?'open':''}" ${mx('Accordion · collapsed · fields shown by Family (conditional visibility)','flow')}><button data-act="acc" data-k="adv" aria-expanded="${S.open.adv}"><span>Advanced options <span class="sum">${chat?`max ${t.maxTokens} tokens · effort ${t.effort}`:`${t.dim} dims`}</span></span>${chev}</button>
+        ${S.open.adv?`<div class="in"><div class="grid3" style="margin-top:14px">
+          ${chat?`<div class="field"><label for="tMax">Max tokens</label><input type="number" id="tMax" value="${t.maxTokens}"></div><div class="field"><label for="tEff">Effort</label><select id="tEff">${optList(['low','medium','high'],t.effort)}</select></div>`
+          :`<div class="field"><label for="tDim">${m.family==='cohere'?'Output dimension':'Dimensions'}</label><select id="tDim">${optList(['256','512','1024','1536'],String(t.dim))}</select></div>
+            ${m.family==='cohere'?`<div class="field"><label for="tIt">Input type</label><select id="tIt">${optList(['search_document','search_query','classification','clustering'],t.inputType)}</select></div><div class="field"><label for="tTr">Truncate</label><select id="tTr">${optList(['NONE','LEFT','RIGHT'],t.truncate)}</select></div>`
+            :`<div class="field"><label for="tNo">Normalize</label><select id="tNo"><option ${t.normalize?'selected':''}>true</option><option ${!t.normalize?'selected':''}>false</option></select></div>`}`}
+        </div></div>`:''}</div>
+      <div><button class="btn primary" data-act="trysend" ${mx('Action button · ACT_Model_Try (new, wraps the 3 existing Send flows) · progress: Blocking','flow')}>${chat?'Send prompt':'Create embedding'}</button></div>
+      ${r?(r.kind==='chat'?`<div><div class="lbl" style="margin-bottom:6px">Response</div><div class="resp" ${mx('Markdown widget · PageHelper/Response','ok')}>${md(r.text)}</div>
+          <div class="meta" ${mx('Dynamic text · latency from currentDateTime diff; tokens from existing Usage entity','flow')}><span><b>${(r.lat/1000).toFixed(2)} s</b></span><span>${r.inTok} input · <b>${r.outTok}</b> output tokens</span></div></div>`
+        :`<div><div class="lbl" style="margin-bottom:6px">Result</div><div class="meta" style="margin:0 0 8px"><span><b>${r.dim}</b> dimensions</span><span><b>${(r.lat/1000).toFixed(2)} s</b></span></div><div class="vals" ${mx('Text area · first values built in microflow','flow')}>[${r.vec.slice(0,8).map(v=>v.toFixed(4)).join(', ')}, … ${r.dim-8} more]</div></div>`):''}
+      ${r?`<div class="acc ${S.open.raw?'open':''}" ${mx('Accordion · two read-only text areas (request + response JSON strings already exist in the flows)','ok')}><button data-act="acc" data-k="raw" aria-expanded="${S.open.raw}"><span>Request and response JSON</span>${chev}</button>
+        ${S.open.raw?`<div class="in"><div class="lbl" style="margin:12px 0 6px">Request</div><pre class="code">${esc(JSON.stringify(r.rawReq,null,2))}</pre><div class="lbl" style="margin:12px 0 6px">Response</div><pre class="code">${esc(JSON.stringify(r.rawRes,null,2))}</pre></div>`:''}</div>`:''}
+    </div></div></div>`;
+}
+function drawEdit(){
+  const e=S.ed, isNew=!e.orig, f=e.family;
+  $('#layer').innerHTML = `<div class="overlay" data-act="closepop"><div class="popup" role="dialog" aria-modal="true" aria-label="Model" ${mx('Pop-up page · BedrockModel_Edit · Data view → BedrockModel · Save = commit + close','ok')}>
+    <div class="hd"><h3>${isNew?'Add model':'Edit model'}</h3><button class="btn sm link" data-act="closepop" aria-label="Close">Close</button></div>
+    <div class="bd">
+      <div class="field"><label for="eName">Display name</label><input type="text" id="eName" value="${esc(e.name)}" placeholder="For example Claude Sonnet 5"></div>
+      <div class="field"><label for="eId">Model ID or inference profile</label><input type="text" id="eId" class="mono" value="${esc(e.modelId)}" placeholder="eu.anthropic.claude-sonnet-5"><span class="hint">Copy it from the Bedrock console, or use “List models in AWS” on the Models tab.</span></div>
+      <div class="field" ${mx('Drop-down · enum ENUM_ModelFamily (Claude, Cohere, Titan)','ok')}><label for="eFam">Family</label><select id="eFam"><option value="claude" ${f==='claude'?'selected':''}>Anthropic Claude (chat)</option><option value="cohere" ${f==='cohere'?'selected':''}>Cohere Embed (embeddings)</option><option value="titan" ${f==='titan'?'selected':''}>Amazon Titan Embeddings V2 (embeddings)</option></select>
+        <span class="hint">The family picks the request format. Other families need new request mappings first.</span></div>
+      <div class="grid3" ${mx('Conditional visibility · $currentObject/Family','flow')}>
+        ${f==='claude'?`<div class="field"><label for="eMax">Default max tokens</label><input type="number" id="eMax" value="${e.maxTokens||5000}"></div><div class="field"><label for="eEff">Default effort</label><select id="eEff">${optList(['low','medium','high'],e.effort||'high')}</select></div>`
+          :`<div class="field"><label for="eDim">Dimensions</label><select id="eDim">${optList(['256','512','1024','1536'],String(e.dim||1024))}</select></div>
+            ${f==='cohere'?`<div class="field"><label for="eIt">Input type</label><select id="eIt">${optList(['search_document','search_query','classification','clustering'],e.inputType||'search_document')}</select></div><div class="field"><label for="eTr">Truncate</label><select id="eTr">${optList(['NONE','LEFT','RIGHT'],e.truncate||'RIGHT')}</select></div>`
+            :`<div class="field"><label for="eNo">Normalize</label><select id="eNo"><option ${e.normalize!==false?'selected':''}>true</option><option ${e.normalize===false?'selected':''}>false</option></select></div>`}`}
+      </div>
+      ${f!=='claude'?`<div class="note warn"><span>The ticket knowledge base stores <b>1024</b> dimensions. Other sizes can be tried here but not used for tickets.</span></div>`:''}
+    </div>
+    <div class="ft"><div>${!isNew?`<button class="btn danger" data-act="delmodel" data-id="${e.orig}">Delete</button>`:''}</div><div class="row"><button class="btn" data-act="closepop">Cancel</button><button class="btn success" data-act="savemodel" ${mx('Save button · ACT_Model_Save (validates unique Model ID)','flow')}>Save</button></div></div>
+  </div></div>`;
+}
+function drawPg(){
+  const e=S.pgEd, isNew=!e.orig;
+  $('#layer').innerHTML = `<div class="overlay" data-act="closepop"><div class="popup" role="dialog" aria-modal="true" aria-label="Database" ${mx('Pop-up page · PgVectorKnowledgeBase.DatabaseConfiguration_Edit (existing, same fields) · or own page on the same entity','css')}>
+    <div class="hd"><h3>${isNew?'New vector database':'Edit vector database'}</h3><button class="btn sm link" data-act="closepop" aria-label="Close">Close</button></div>
+    <div class="bd">
+      <div class="field"><label for="pName">Display name</label><input type="text" id="pName" value="${esc(e.name)}" placeholder="For example atlas-ceba-pp-vectordb"></div>
+      <div class="field"><label for="pJdbc">JDBC URL</label><input type="text" id="pJdbc" class="mono" value="${esc(e.jdbc)}" placeholder="jdbc:postgresql://localhost:5432/vectorDatabaseName"><span class="hint">For example jdbc:postgresql://localhost:5432/vectorDatabaseName</span></div>
+      <div class="field"><label for="pUser">Username</label><input type="text" id="pUser" value="${esc(e.user)}" autocomplete="off"></div>
+      <div class="field" ${mx('Text box · Password: true · non-persistent DatabasePassword (existing); saved encrypted via Encryption module','css')}><label for="pPw">Password</label><input type="password" id="pPw" value="" autocomplete="new-password" placeholder="${!isNew&&e.hasPw?'••••••••':''}"><span class="hint">${!isNew&&e.hasPw?'Leave empty to keep the current password.':'Stored encrypted. It is never shown again.'}</span></div>
+      <div class="note"><span>After saving, click <b>Test</b> in the list. It also creates the pgvector extension if it is missing.</span></div>
+    </div>
+    <div class="ft"><div>${!isNew?`<button class="btn danger" data-act="delpg" data-id="${e.orig}">Delete</button>`:''}</div><div class="row"><button class="btn" data-act="closepop">Cancel</button><button class="btn success" data-act="savepg" ${mx('Save button · call microflow PgVectorKnowledgeBase.ACT_DatabaseConfiguration_Save (existing)','css')}>Save</button></div></div>
+  </div></div>`;
+}
+function drawTicket(){
+  const t=S.tk, isNew=!t.orig;
+  $('#layer').innerHTML = `<div class="overlay" data-act="closepop"><div class="popup" role="dialog" aria-modal="true" aria-label="Ticket" ${mx('Pop-up page · Ticket_Edit · Data view → Ticket (existing entity, Admin has write access)','ok')}>
+    <div class="hd"><h3>${isNew?'Add ticket':'Edit ticket '+t.orig}</h3><button class="btn sm link" data-act="closepop" aria-label="Close">Close</button></div>
+    <div class="bd">
+      <div class="field"><label for="kSub">Subject</label><input type="text" id="kSub" value="${esc(t.subject)}"></div>
+      <div class="field"><label for="kDesc">Description</label><textarea id="kDesc">${esc(t.desc)}</textarea></div>
+      <div class="field"><label for="kSteps">Reproduction steps</label><textarea id="kSteps" style="min-height:56px">${esc(t.steps)}</textarea></div>
+      <div class="field"><label for="kRes">Resolution</label><textarea id="kRes" style="min-height:56px">${esc(t.res)}</textarea></div>
+      <div class="grid2" ${mx('Drop-downs · enums ENUM_Ticket_Category, ENUM_Ticket_Status (fixed values)','ok')}><div class="field"><label for="kCat">Category</label><select id="kCat">${optList(['Bug','Feature'],t.category)}</select></div>
+        <div class="field"><label for="kSt">Status</label><select id="kSt">${optList(['Open','In Progress','Closed'],t.status)}</select></div></div>
+    </div>
+    <div class="ft"><div>${!isNew?`<button class="btn danger" data-act="delticket" data-id="${t.orig}">Delete</button>`:''}</div><div class="row"><button class="btn" data-act="closepop">Cancel</button><button class="btn success" data-act="saveticket" ${mx('Save button · commit; set ChangedDateTime = currentDateTime (before-commit or in the save microflow)','flow')}>Save</button></div></div>
+  </div></div>`;
+}
+function msgBox(title,html,bad){
+  S.popup='msg';
+  $('#layer').innerHTML = `<div class="overlay" data-act="closepop"><div class="popup small" role="alertdialog" aria-modal="true" aria-label="${esc(title)}" ${mx('Show message activity (Information / Error)','ok')}>
+    <div class="hd"><h3 style="${bad?'color:var(--crit)':''}">${esc(title)}</h3></div><div class="bd">${html}</div>
+    <div class="ft"><span></span><button class="btn primary" data-act="closepop">OK</button></div></div></div>`;
+}
+function confirmBox(title,html,act,id,label){
+  S.popup='msg';
+  $('#layer').innerHTML = `<div class="overlay" data-act="closepop"><div class="popup small" role="alertdialog" aria-modal="true" aria-label="${esc(title)}" ${mx('Action with Confirmation text (client setting on the button)','ok')}>
+    <div class="hd"><h3>${esc(title)}</h3></div><div class="bd">${html}</div>
+    <div class="ft"><span></span><div class="row"><button class="btn" data-act="closepop">Cancel</button><button class="btn danger" data-act="${act}" data-id="${id||''}">${label}</button></div></div></div></div>`;
+}
+function block(msg){ let b=$('#blk'); if(!b){ b=document.createElement('div'); b.id='blk'; document.body.appendChild(b) } b.innerHTML=`<div class="overlay blocking" ${mx('Progress bar: Blocking (action button property)','ok')}><div class="blockbox"><span class="spin"></span>${esc(msg)}</div></div>` }
+function unblock(){ $('#blk')?.remove() }
+function closeAll(){ $('#layer').innerHTML=''; S.popup=null; S.ed=null; S.pgEd=null; S.tk=null }
+
+/* ---------------- BUILD NOTES ---------------- */
+const NOTES = [
+ ['The Ask tickets tab (new)','c',[
+  '<b>One button, one microflow.</b> <code>ACT_Ask</code> chains your existing search flow and your existing prompt flow, then creates an <code>AskEntry</code> (non-persistent). No new Java.',
+  'The answers are a <b>List view</b> over <code>AskEntry</code>, newest first. The text is a Markdown widget; the source cards are a nested List view with a Progress bar widget.',
+  '<b>Citations:</b> the ticket data is sent as numbered blocks and the system request asks the model to cite them as [1]. The numbers are plain text, not clickable.',
+  '<b>No match:</b> the microflow skips the model call and sets <code>NoMatch</code>. The “Loosen the match” button runs the same microflow with strictness lowered by 0.15.',
+  '<b>Rebuild now</b> in the warnings is the existing chunk microflow on a button, so no tab switching is needed.',
+  '<b>Not possible in Mendix:</b> streaming or typing, auto-scroll to the new answer, clickable citations that jump to a card. The blocking overlay replaces the busy state.',
+  'The <b>Test guide</b> panel and the example answers exist only in this mockup.']],
+ ['Where each credential and setting lives','y',[
+  '<b>AWS credentials:</b> your Java uses the web identity token (IRSA). The role and token file come from the environment, locally from JVM parameters in the project’s Default configuration. They <b>cannot be entered in the app</b>, so the page shows them read-only.',
+  '<b>AWS region and guardrail:</b> <code>Config</code>, editable on the page (already exists).',
+  '<b>PostgreSQL URL, user and password:</b> entity <code>PgVectorKnowledgeBase.DatabaseConfiguration</code>. The password is saved AES-encrypted by the <code>Encryption</code> module.',
+  '<b>Encryption key:</b> constant <code>Encryption.EncryptionKey</code>. It must be set per environment (it is set in your local Default configuration). It cannot be edited in the app; the checklist only shows whether it is set.',
+  '<b>Master data:</b> <code>Ticket</code> (add, edit, delete, load samples) and the new <code>BedrockModel</code>. Status and Category are enumerations, so their values stay fixed.']],
+ ['Checked in this project','y',[
+  'Mendix <b>10.24.23</b>. Widgets installed: <b>Data grid 2 3.7</b>, <b>Combo box 1.6</b>, <b>Accordion</b>, <b>Slider</b>, <b>Progress bar</b>, <b>Badge</b>, <b>Markdown</b>.',
+  'The <code>sts</code> AWS SDK jar is already in userlib, so a connection test (STS caller identity) is possible with one new Java action.',
+  'Your app role (<code>User</code>) already maps <code>PgVectorKnowledgeBase.Administrator</code> and <code>AWSBedrockImplementation.Admin</code>, so these pages work without role changes.',
+  'The pgvector module ships a Test microflow that also creates the pgvector extension, so “Test” covers more than the connection.',
+  'Your three Java actions stay <b>unchanged</b>. Existing request and response mappings are reused.']],
+ ['The pgvector configuration: two ways','c',[
+  '<b>A. Embed their snippet</b> <code>Snippet_DatabaseConfigurations</code> (it sits in the module’s USE_ME folder, so it is meant for reuse). Fastest and upgrade-safe, but it keeps their look and its own New/Edit/Delete/Test buttons.',
+  '<b>B. Own grid (drawn here)</b> over the same entity, calling their <code>ACT_DatabaseConfiguration_New / Edit / Delete / Test</code> microflows and their Edit pop-up. Matches our look. Those microflows sit in the module’s <i>Private</i> folder, so a module upgrade could rename them. Check after each upgrade.',
+  'Either way the <b>marketplace module is not modified</b>.']],
+ ['What changes in existing flows','f',[
+  'The model name is hardcoded in 5 places (<code>ACT_PageHelper_PromptRequest_Send</code>, <code>ACT_Pagehelper_Send_SearchItem</code>, <code>SUB_96TicketList_CreateEmbeddings_Store</code> and the <code>DS_ModelHelper(ModelName = …)</code> calls). Each becomes a lookup on <code>Config</code>.',
+  'The database name <code>atlas-ceba-pp-vectordb</code> and the knowledge base name <code>KnowledgeBase</code> are hardcoded in <b>4 flows</b>: <code>ACT_TicketList_CreateChunks_StoreInVectorDB</code>, <code>SUB_96TicketList_CreateEmbeddings_Store</code>, <code>ACT_Pagehelper_Send_SearchItem</code> and <code>DS_TicketChunkList</code>. Each becomes <code>$Config/Config_DatabaseConfiguration</code>.',
+  '<b>Embedding with Titan</b> for tickets needs one extra branch, because those flows only build Cohere requests today.',
+  'New <code>Config</code> attributes: <code>AwsTestOk</code>, <code>AwsTestedAt</code>, <code>ChunksModelId</code>, <code>ChunksCreatedAt</code>. They feed the checklist and the “rebuild” warnings.',
+  '<code>DS_Config</code> already creates the config on first open. It can seed the three default models the same way.']],
+ ['New in Mendix','c',[
+  'Entity <code>BedrockModel</code> and associations from <code>Config</code> to <code>BedrockModel</code> (2) and <code>DatabaseConfiguration</code> (1).',
+  'Java <code>JA_BedrockTestConnection</code> (STS caller identity and model list) and microflow <code>ACT_Connection_Test</code>.',
+  '<code>ACT_Model_Try</code>, <code>ACT_Model_Save</code>, <code>ACT_Ticket_Save</code> and the checklist expressions.',
+  'About 40 lines of SCSS for the card look. Everything else is stock Atlas.']],
+ ['Not possible, or not recommended','n',[
+  '<b>Typing AWS role or token in the app.</b> The SDK reads them from the environment. Storing access keys in the database would need a Java change and a stored secret. Not recommended on a cloud platform.',
+  '<b>Setting the Encryption key in the app.</b> It is a constant, so it is set in the environment or portal.',
+  '<b>Live status.</b> “Tested 5 h ago” is the stored result of the last test, not a live check.',
+  '<b>Editing enum values</b> (ticket status or category) at runtime.',
+  '<b>Inline “typing” state.</b> Mendix shows its blocking progress overlay while a microflow runs. No streaming.',
+  '<b>Switching tabs from a link.</b> Hints such as “Change them on the Models tab” are plain text.',
+  '<b>Inline row editing</b> in Data grid 2. Editing uses pop-up pages, as drawn.']],
+ ['Left out on purpose','n',[
+  'Editing the raw request trees (Thinking, Output config, Messages list, multiple Cohere texts, embedding types). Per-model defaults replace them. The JSON is visible in Try.',
+  'New model families such as Nova, Llama or Mistral. Each needs its own request mapping or a switch to the Converse API.',
+  '<code>JA_ListFoundationModels</code> ignores the saved region today (hardcoded <code>EU_CENTRAL_1</code>). A one-line Java fix.',
+  'The mockup’s answers, similarity scores and test results are simulated.']],
+];
+function renderDrawer(){
+  renderGuide();
+  const d=$('#drawer'); d.hidden=!S.notes; if(!S.notes) return;
+  d.innerHTML = '<h2 style="font-size:18px;margin:0">Build notes</h2><p class="muted small" style="margin-top:4px">Research on what this page needs in Mendix. Turn on “Mendix mapping” to see it on each block.</p>'+
+   NOTES.map(([h,k,items])=>`<h3>${h}</h3><ul>${items.map(i=>`<li><span class="k ${k}">${{y:'✓',c:'+',f:'~',n:'!'}[k]}</span><span>${i}</span></li>`).join('')}</ul>`).join('');
+}
+
+/* ---------------- EVENTS ---------------- */
+const A = {
+  mx(){ S.mx=!S.mx; document.body.classList.toggle('mx',S.mx); $('#bMx').setAttribute('aria-pressed',S.mx) },
+  notes(){ S.notes=!S.notes; if(S.notes) S.guide=false; $('#bNotes').setAttribute('aria-pressed',S.notes); $('#bGuide').setAttribute('aria-pressed',S.guide); renderDrawer() },
+  guide(){ S.guide=!S.guide; if(S.guide) S.notes=false; $('#bGuide').setAttribute('aria-pressed',S.guide); $('#bNotes').setAttribute('aria-pressed',S.notes); renderDrawer() },
+  guiderun:t=>GUIDE[+t.dataset.i][2](),
+  /* Ask tickets */
+  a2opt(){ readInputs(); S.ask2.opt=!S.ask2.opt; render() },
+  a2chip:t=>{ S.ask2.q=EXAMPLES[+t.dataset.i]; render(); const q=$('#a2q'); q.focus(); q.setSelectionRange(q.value.length,q.value.length) },
+  async a2send(){ readInputs(); const q=S.ask2.q.trim(); if(!q){ toast('Write a question first',true); return } await runAsk(q) },
+  async a2again(t){ readInputs(); const e=S.ask2.entries.find(x=>x.id===t.dataset.id); await runAsk(e.q) },
+  async a2lower(t){ readInputs(); const e=S.ask2.entries.find(x=>x.id===t.dataset.id); S.ask2.min=Math.max(0,+(e.min-0.15).toFixed(2)); await runAsk(e.q) },
+  a2ctx:t=>{ S.open['ctx'+t.dataset.id]=!S.open['ctx'+t.dataset.id]; readInputs(); render() },
+  a2clear(){ S.ask2.entries=[]; render() },
+  tab:t=>setTab(t.dataset.v),
+  acc:t=>{ S.open[t.dataset.k]=!S.open[t.dataset.k]; readInputs(); if(S.popup==='try') drawTry(); else render() },
+  closepop:(t,e)=>{ if(!t.classList.contains('overlay')||e.target===t){ closeAll(); render() } },
+  /* models */
+  trymodel:t=>{ S.tr.modelId=t.dataset.id; S.tr.result=null; S.tr._for=null; S.popup='try'; drawTry() },
+  addmodel:()=>{ S.ed={orig:null,name:'',modelId:'',family:'claude'}; S.popup='edit'; drawEdit() },
+  editmodel:t=>{ S.ed={...mdl(t.dataset.id),orig:t.dataset.id}; S.popup='edit'; drawEdit() },
+  delmodel:t=>{ const id=t.dataset.id, m=mdl(id);
+    if(id===DB.config.chat||id===DB.config.emb){ msgBox('Cannot delete','<p>'+esc(m.name)+' is in use as the '+(id===DB.config.chat?'chat':'embedding')+' model. Pick another model first.</p>',true); return }
+    confirmBox('Delete model','<p>Delete <b>'+esc(m.name)+'</b>? This cannot be undone.</p>','dodelmodel',id,'Delete') },
+  dodelmodel:t=>{ DB.models=DB.models.filter(m=>m.id!==t.dataset.id); closeAll(); render(); toast('Model deleted') },
+  savemodel(){
+    readEdit(); const e=S.ed;
+    if(!e.name.trim()||!e.modelId.trim()){ toast('Name and model ID are required',true); return }
+    if(DB.models.some(m=>m.modelId===e.modelId.trim()&&m.id!==e.orig)){ toast('A model with this ID already exists',true); return }
+    const rec={ id:e.orig||'m'+Date.now(), name:e.name.trim(), modelId:e.modelId.trim(), family:e.family };
+    if(e.family==='claude'){ rec.maxTokens=e.maxTokens; rec.effort=e.effort } else { rec.dim=e.dim; if(e.family==='cohere'){ rec.inputType=e.inputType; rec.truncate=e.truncate } else rec.normalize=e.normalize }
+    const i=DB.models.findIndex(m=>m.id===e.orig); if(i>=0) DB.models[i]=rec; else DB.models.push(rec);
+    closeAll(); render(); toast('Model saved');
+  },
+  async listaws(){ block('Calling Bedrock…'); const L=await actListModels(); unblock(); msgBox('Action executed successfully!','<p class="muted small" style="margin-bottom:8px">Response:</p><div class="vals">'+L.map(r=>'Model ID: '+esc(r[0])+'<br>Provider: '+esc(r[1])+'<br>Name: '+esc(r[2])).join('<br><br>')+'</div>') },
+  /* AWS */
+  saveconn(){ readInputs(); const re=DB.config.region!==S.conn.region; Object.assign(DB.config,{region:S.conn.region,gid:S.conn.gid,gver:S.conn.gver}); if(re){ DB.config.awsOk=false; S.awsResult=null } render(); toast('Saved') },
+  async testaws(){ readInputs(); block('Testing the connection to AWS…'); const r=await actTestAws(S.conn.region); unblock(); S.awsResult=r; DB.config.awsOk=r.ok; DB.config.awsAt=Date.now(); if(r.ok) DB.config.region=S.conn.region; render() },
+  /* pgvector */
+  addpg:()=>{ S.pgEd={orig:null,name:'',jdbc:'',user:'',hasPw:false}; S.popup='pg'; drawPg() },
+  editpg:t=>{ S.pgEd={...pgOf(t.dataset.id),orig:t.dataset.id}; S.popup='pg'; drawPg() },
+  async testpg(t){ const p=pgOf(t.dataset.id); block('Connecting to the database…'); const r=await actTestPg(p); unblock(); p.tested=r.ok; render(); msgBox(r.ok?'Success!':'Test failed','<p>'+esc(r.msg)+'</p>',!r.ok) },
+  delpg:t=>{ const id=t.dataset.id, p=pgOf(id);
+    if(id===DB.config.pg&&DB.chunks){ msgBox('Cannot delete','<p>'+esc(p.name)+' holds the ticket knowledge base. Select another database first.</p>',true); return }
+    confirmBox('Delete database configuration','<p>Delete <b>'+esc(p.name)+'</b>? The data in the database itself is not touched.</p>','dodelpg',id,'Delete') },
+  dodelpg:t=>{ DB.pgs=DB.pgs.filter(p=>p.id!==t.dataset.id); if(DB.config.pg===t.dataset.id) DB.config.pg=(DB.pgs[0]||{}).id||''; closeAll(); render(); toast('Database configuration deleted') },
+  savepg(){
+    const g=id=>document.getElementById(id).value, e=S.pgEd, name=g('pName').trim(), jdbc=g('pJdbc').trim(), user=g('pUser').trim(), pw=g('pPw');
+    if(!name||!jdbc||!user){ toast('Name, JDBC URL and username are required',true); return }
+    if(!e.orig&&!pw){ toast('Enter a password',true); return }
+    const rec={ id:e.orig||'p'+Date.now(), name, jdbc, user, hasPw:e.hasPw||!!pw, tested:false };
+    const i=DB.pgs.findIndex(p=>p.id===e.orig); if(i>=0) DB.pgs[i]=rec; else DB.pgs.push(rec);
+    if(!DB.config.pg) DB.config.pg=rec.id;
+    closeAll(); render(); toast('Saved. Click Test to check the connection.');
+  },
+  /* tickets */
+  populate:()=>confirmBox('Load sample tickets','<p>This replaces all current tickets with the 12 sample tickets.</p>','dopopulate','','Replace tickets'),
+  dopopulate:()=>{ populateTickets(); closeAll(); render(); toast('Sample tickets loaded') },
+  addticket:()=>{ S.tk={orig:null,subject:'',desc:'',steps:'',res:'',category:'Bug',status:'Open'}; S.popup='ticket'; drawTicket() },
+  editticket:t=>{ const k=DB.tickets.find(x=>x.id==t.dataset.id); S.tk={...k,orig:k.id}; S.popup='ticket'; drawTicket() },
+  delticket:t=>{ const k=DB.tickets.find(x=>x.id==t.dataset.id); confirmBox('Delete ticket','<p>Delete ticket <b>'+k.id+'</b>, “'+esc(k.subject)+'”?</p>','dodelticket',k.id,'Delete') },
+  dodelticket:t=>{ DB.tickets=DB.tickets.filter(x=>x.id!=t.dataset.id); closeAll(); render(); toast('Ticket deleted') },
+  saveticket(){
+    const g=id=>document.getElementById(id).value, e=S.tk; if(!g('kSub').trim()||!g('kDesc').trim()){ toast('Subject and description are required',true); return }
+    const rec={ id:e.orig||nextTicket++, subject:g('kSub').trim(), desc:g('kDesc').trim(), steps:g('kSteps').trim(), res:g('kRes').trim(), category:g('kCat'), status:g('kSt'), changed:Date.now() };
+    const i=DB.tickets.findIndex(x=>x.id===e.orig); if(i>=0) DB.tickets[i]=rec; else DB.tickets.push(rec);
+    closeAll(); render(); toast('Ticket saved');
+  },
+  async chunks(){ block('Creating chunks and embedding '+DB.tickets.length+' tickets…'); await actCreateChunks(); unblock(); S.search.results=null; S.search.ctx=[]; render(); toast('Chunks stored in the knowledge base') },
+  async search(){ readInputs(); const s=S.search; block('Searching knowledge base…'); const r=await actSearch(s.q,s.max,s.min); unblock(); if(r.error){ s.err=r.error; s.results=null } else { s.err=null; s.results=r.results; s.ctx=r.results.map(x=>x.t) } render() },
+  async ask(){ readInputs(); block('Sending request to '+mdl(DB.config.chat).name+'…'); const r=await actAsk(S.ask.system,S.ask.prompt,'',S.search.ctx); unblock(); S.ask.resp=r.text; render() },
+  async trysend(){ readInputs(); const t=S.tr, m=mdl(t.modelId); if(!t.input.trim()){ toast('Enter some text first',true); return }
+    block('Sending request…'); t.result=await actModelTry(m,t.input,{system:t.system,maxTokens:t.maxTokens,effort:t.effort,dim:t.dim,inputType:t.inputType,truncate:t.truncate,normalize:t.normalize}); unblock(); drawTry() },
+};
+function readInputs(){
+  const g=id=>document.getElementById(id), v=id=>g(id)?g(id).value:undefined;
+  if(S.popup==='try'){ const t=S.tr; if(g('tIn')) t.input=v('tIn'); if(g('tSys')) t.system=v('tSys'); if(g('tMax')) t.maxTokens=+v('tMax')||1; if(g('tEff')) t.effort=v('tEff'); if(g('tDim')) t.dim=+v('tDim'); if(g('tIt')) t.inputType=v('tIt'); if(g('tTr')) t.truncate=v('tTr'); if(g('tNo')) t.normalize=v('tNo')==='true' }
+  if(!S.popup){
+    if(g('sq')) S.search.q=v('sq'); if(g('smax')) S.search.max=Math.max(1,+v('smax')||5); if(g('smin')) S.search.min=+v('smin');
+    if(g('asys')) S.ask.system=v('asys'); if(g('apr')) S.ask.prompt=v('apr');
+    if(g('a2q')) S.ask2.q=v('a2q'); if(g('a2sys')) S.ask2.system=v('a2sys'); if(g('a2max')) S.ask2.max=+v('a2max'); if(g('a2min')) S.ask2.min=+v('a2min');
+    if(g('cRegion')) S.conn.region=v('cRegion'); if(g('cGid')) S.conn.gid=v('cGid'); if(g('cGver')) S.conn.gver=+v('cGver')||0;
+  }
+}
+function readEdit(){
+  const e=S.ed, g=id=>document.getElementById(id), v=id=>g(id)?g(id).value:undefined;
+  e.name=v('eName'); e.modelId=v('eId'); e.family=v('eFam');
+  if(g('eMax')) e.maxTokens=+v('eMax')||5000; if(g('eEff')) e.effort=v('eEff'); if(g('eDim')) e.dim=+v('eDim'); if(g('eIt')) e.inputType=v('eIt'); if(g('eTr')) e.truncate=v('eTr'); if(g('eNo')) e.normalize=v('eNo')==='true';
+}
+/* buttons inside a clickable grid row act on their own, they must not also open the row's edit pop-up */
+document.addEventListener('click',e=>{ const t=e.target.closest('[data-act]'); if(!t) return; const f=A[t.dataset.act]; if(f) f(t,e) });
+document.addEventListener('input',e=>{
+  const id=e.target.id;
+  if(id==='smin'){ $('#sminO').textContent=(+e.target.value).toFixed(2); S.search.min=+e.target.value }
+  else if(id==='a2max'){ S.ask2.max=+e.target.value; $('#a2maxO').textContent=e.target.value }
+  else if(id==='a2min'){ S.ask2.min=+e.target.value; $('#a2minO').textContent=(+e.target.value).toFixed(2); $('#a2minL').textContent=strictLabel(+e.target.value) }
+  else if(id==='a2q'){ S.ask2.q=e.target.value }
+  else if(id==='tq'){ S.tq=e.target.value; const p=e.target.selectionStart; render(); const f=$('#tq'); f.focus(); f.setSelectionRange(p,p) }
+});
+document.addEventListener('change',e=>{
+  const id=e.target.id, v=e.target.value;
+  if(e.target.dataset.sel){ DB.config[e.target.dataset.sel]=v; render(); toast('Saved') }
+  else if(id==='eFam'){ readEdit(); S.ed.family=v; drawEdit() }
+  else if(id==='tModel'){ readInputs(); S.tr.modelId=v; S.tr._for=null; S.open.adv=false; drawTry() }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&S.popup){ closeAll(); render() }
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&e.target.id==='a2q'){ e.preventDefault(); A.a2send() }
+});
+window.addEventListener('hashchange',()=>setTab(location.hash.slice(1)));
+
+/* start in a working state: tickets loaded and chunks already stored with the current embedding model */
+populateTickets();
+DB.chunks = DB.tickets.map((t,i)=>({ id:'c'+(i+1), human:'Ticket '+t.id, text:ticketText(t), t:{...t}, dim:1024, vec:embed(ticketText(t),1024,'m2'), idx:i }));
+(async()=>{ const r=await actSearch(S.search.q,S.search.max,S.search.min); S.search.results=r.results; S.search.ctx=r.results.map(x=>x.t); setTab(location.hash.slice(1)||'connections') })();
+</script>

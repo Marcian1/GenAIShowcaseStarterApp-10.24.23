@@ -1,0 +1,5 @@
+alter navigation Responsive {
+  insert into 'Amazon Bedrock-Specific' {
+    menu item 'PgVector DB Config' (OnClick: show page PgVectorKnowledgeBase.DatabaseConfiguration_Overview)
+  }
+};

@@ -1,0 +1,609 @@
+// @import "../../themesource/datawidgets/web/variables.scss";
+// @import "../../themesource/atlas_core/web/_variables.scss";
+@import "custom-variables";
+
+$brand-mistral: #EC7211; 
+$brand-pgvector: #C6D92F; 
+$brand-mxgenai: #146FF4;  
+$brand-openai: #0078D4;
+
+/* Card Colors */
+$light-grey-2: #F2F2F3;
+$light-grey-5: #C1C3C8;
+$light-grey-6: #9EA2A9;
+$light-grey-7: #6B707B;
+$light-green-10: #C6D92F;
+$turquoise-4: #12C1BE;
+$dark-purple-8: #4701D4;
+$light-purple-7: #8568F8;
+$dark-violet-7: #CD59F7;
+$light-red-4: #FD7072;
+$light-yellow-5: #FCC73A;
+$light-orange: #EC7211;
+
+
+/* Label Colors */
+$label-bg-mistral: #FFEAC3;
+$label-color-mistral: #A05700;
+$label-bg-mxcloudgenai: #DCEEFE;
+$label-color-mxcloudgenai: #0006AB;
+$label-bg-bedrock: #E2E0FC;
+$label-color-bedrock: #2F008C;
+$label-bg-pgvector: #E1FAE1;
+$label-color-pgvector: #076407;
+$label-bg-all: #D4EDEE;
+$label-color-all: #00635A;
+
+//Navigation
+.layout-atlas .region-sidebar {
+  .mx-navigationtree .navbar-inner > ul > li > a img {
+    width: 52px;
+    padding: 4px 14px;
+  }
+}
+
+.layout-atlas-responsive,
+.layout-atlas-responsive-default {
+  .region-sidebar .mx-scrollcontainer-wrapper  > .mx-navigationtree
+    .navbar-inner > ul > li > a {
+      white-space: normal;
+  }
+}
+
+/*    Navigation Bar  */
+.layout-atlas-responsive-default .region-sidebar .mx-scrollcontainer-wrapper
+.mx-navigationtree .navbar-inner > ul > li > a {
+  padding: 8px 0;
+  margin-top: 2px;
+  white-space: normal;
+}
+
+//Helpers
+.container-border-primary {
+  border: 1px solid $brand-primary;
+  border-radius: $border-radius-default;
+}
+
+.height--85{
+  height: 85%;
+}
+
+.height--95{
+  height: 95%;
+}
+
+.display--inline {
+  display: inline;
+}
+
+.margin-top-medium{
+  margin-top: $spacing-medium;
+}
+
+.margin-right-xxs{
+  margin-right: $spacing-smallest;
+}
+
+.inline-link.mx-link {
+  padding-left: $spacing-smaller;
+  line-height: $line-height-base * 1.25;
+}
+
+.card-small.card {
+  margin-bottom: $spacing-small;
+  padding: $spacing-small;
+}
+
+.word-break{
+  word-break: break-word; 
+}
+
+.line-clamp--4 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4; 
+  -webkit-box-orient: vertical;
+}
+
+.mx-layoutgrid.card-container>.row {
+  padding-bottom: 24px;
+  
+  .col>.card {
+    height: 100%;
+    margin-bottom: 0px;
+    .widget-datagrid{
+      margin-right: -24px;
+      margin-left: -24px;
+    }
+  }
+}
+
+.container-clickable {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-smaller $spacing-smaller $spacing-smaller $spacing-small;
+    border-radius: $btn-border-radius;
+
+    .btn-wrapper {
+        min-width: 5em;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .mx-text {
+        margin: 0;
+        line-height: $line-height-base;
+    }
+
+    .btn {
+        transition: all 0.2s ease-in-out;
+        border: none;
+        background-color: transparent;
+        color: $font-color-default;
+        height: $font-size-small + 2 * $spacing-medium;
+
+        &.btn-hover {
+            visibility: hidden;
+        }
+
+    }
+
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+        background-color: $btn-default-bg-hover;
+
+        .btn.btn-hover {
+            visibility: visible;
+        }
+    }
+}
+
+//Fixes for examples
+
+//ConversationalUI 
+.arrow-position {
+    position: fixed;
+    bottom: 5vh;
+    right: 10vw;
+}
+
+//SemanticSearchMultiColumn
+.card_scroll-to {
+    //only needed to use in JS-Action for scrolling to element
+}
+
+//Custom tag for the product description
+.product-tag {
+  .form-control {
+    padding: 3px 8px;
+    border: none;
+    background: transparent;
+  }
+}
+
+//Anychart in clustering example
+.anychart-extension__container {
+    .widget-charts-playground .widget-charts-playground-toggle .btn {
+      right: unset;
+      left: 10px;
+    }
+    .widget-charts .plot-container .main-svg {
+      Background: none !important;
+    }
+    .legend .bg {
+      fill-opacity: 0 !important;
+    }
+}
+
+.btn-icon {
+    display: flex;
+    img {
+        height: 22px;
+        width: 22px;
+        margin: 1px;
+    }
+}
+
+.display-none {
+  display: none;
+}
+
+/* --------------------------------------- Landing Page Styling -----------------------------------*/
+.group-tooltip {
+  .widget-tooltip-content {
+    max-width: 500px;
+    text-align: left;
+    margin-bottom: 0;
+    padding: 16px;
+    overflow-y: auto;
+    font-weight: 400;
+    color: black;
+  }
+}
+
+.landing-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100%;
+  min-width: 100%;
+  height: -webkit-fill-available;
+  margin: 0 auto;
+
+  .landing-page-content {
+    height: 90vh;
+    width: 93.1vw;
+    max-width: 1420px;
+    box-sizing: border-box;
+
+    .card {
+      height: 100%;
+      border: 1px solid #E7E7E9;
+      border-radius: 16px;
+      padding: 24px 32px;
+      overflow: auto;
+
+      /* Grid: defines the columns of the the cards per group */
+      .grid-landing-page {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        justify-content: start;   // prevents stretching
+        gap: 24px;
+        box-sizing: border-box;
+        margin-top: 12px;
+      }
+    }
+  }
+}
+
+
+/* --------------------------------------- Tutorial -----------------------------------*/
+
+.tutorial-page {
+  height: 460px;
+}
+
+.tutorial-text {
+  margin-bottom: $spacing-medium;
+}
+
+.tutorial-primary-btn {
+  width: 65px;
+  margin-left: $spacing-small;
+}
+
+.tutorial-footer {
+  padding: 8px 24px 24px !important;
+}
+
+.tutorial-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tutorial-slideshow {
+  width: 660px;
+  overflow: hidden;
+  justify-content: center;
+
+  img {
+    height: 320px;
+    width: 650px;
+    padding-top: 12px;
+  }
+}
+
+.dots {
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: $light-grey-5;
+}
+
+.active-dot {
+  @extend .dot;
+  background: $brand-primary;
+}
+
+
+
+/* --------------------------------------- Cards -----------------------------------*/
+
+/* Card Structure Overview (outer to inner)
+ * .card-base     → Outer wrapper; sets background, left border and shadow
+ * .card-color    → Set left border color
+ * .card-inner    → Inner container; handles padding and layout
+ * .card-content  → Content wrapper; holds actual content (text, icons, etc.)
+ */
+
+.card-base {
+  flex: 1 1 calc(25% - 16px);  // 4 per row, responsive
+  width: 100%;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border-top: 1px grey;
+  background: white;
+  box-sizing: border-box;
+
+  box-shadow:
+    0px 1px 1px 0px rgba(0, 0, 0, 0.10),
+    0px 2px 1px 0px rgba(0, 0, 0, 0.08),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-border-card, #E7E7E9);
+  border-left: 8px solid transparent; // default fallback
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow:
+      0px 4px 6px rgba(0, 0, 0, 0.15),
+      0px 6px 12px rgba(0, 0, 0, 0.10);
+    transform: translateY(-2px);
+  }
+
+  .card-inner {
+    display: flex;
+    align-items: flex-start;
+    flex-shrink: 0;
+    padding: 16px;        
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+  .card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-self: stretch;
+
+    .card-icon {
+      display: flex;
+      width: 48px;
+      height: 48px;
+      padding: 4px;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+
+      border-radius: var(--border-radius-8, 8px);
+      border: 1px solid #BEC1C5;
+      background: #F7F7F7;
+    }
+
+
+    .container-img-label {
+      display: grid;
+      grid-template-columns: 1fr auto; /* label | icon */
+      align-items: start;
+      margin-bottom: 4px;
+      box-sizing: border-box;
+      overflow: hidden; /* hard safety net */
+    }
+
+    .card-title,
+    .card-description {
+      word-break: break-word;
+      overflow-wrap: break-word;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Title */
+    .card-title {
+      -webkit-line-clamp: 2;
+      margin-bottom: 8px;
+    }
+
+    /* Description */
+    .card-description {
+      -webkit-line-clamp: 2;
+    }
+  }
+}
+
+.card-lightest-grey {
+   @extend .card-base; 
+  border-left-color: $light-grey-5; 
+}
+
+.card-light-grey {
+   @extend .card-base; 
+  border-left-color: $light-grey-6; 
+}
+
+.card-grey         { 
+  @extend .card-base; 
+  border-left-color: $light-grey-7; 
+}
+
+.card-turquoise      { 
+  @extend .card-base; 
+  border-left-color: $turquoise-4; 
+}
+
+.card-green        { 
+  @extend .card-base; 
+  border-left-color: $light-green-10; 
+}
+
+.card-blue         { 
+  @extend .card-base; 
+  border-left-color: $brand-mxgenai; 
+}
+.card-darkpurple   { 
+  @extend .card-base; 
+  border-left-color: $dark-purple-8; 
+}
+
+.card-lightpurple  { 
+  @extend .card-base; 
+  border-left-color: $light-purple-7;
+}
+
+.card-violet       { 
+  @extend .card-base; 
+  border-left-color: $dark-violet-7; 
+}
+
+.card-yellow         { 
+  @extend .card-base; 
+  border-left-color: $light-yellow-5;
+}
+
+.card-orange      { 
+  @extend .card-base; 
+  border-left-color: $light-orange; 
+}
+
+
+
+/* --------------------------------------- Card Labels -----------------------------------*/
+
+.card-label-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 290px;
+  overflow: hidden; 
+}
+
+.card-label-base {
+  display: inline-flex;
+  display: flex;
+  height: 25px;
+  padding: 6px;
+  gap: 6px;
+  align-items: center;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.container-label {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.label-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.card-label-openai {
+  @extend .card-label-base;
+  background: $light-grey-2;
+}
+
+.card-label-bedrock {
+  @extend .card-label-base;
+  background: $label-bg-bedrock;
+  color: $label-color-bedrock;
+}
+
+.card-label-mxcloudgenai {
+  @extend .card-label-base;
+  background: $label-bg-mxcloudgenai;
+  color: $label-color-mxcloudgenai;
+}
+
+.card-label-all {
+  @extend .card-label-base;
+  background: $label-bg-all;
+  color: $label-color-all;
+}
+
+.card-label-mistral {
+  @extend .card-label-base;
+  background: $label-bg-mistral;
+  color: $label-color-mistral;
+}
+
+.card-label-pgvector {
+  @extend .card-label-base;
+  background: $label-bg-pgvector;
+  color: $label-color-pgvector;
+}
+
+.text-strike {
+  text-decoration: line-through;
+}
+
+.multi-label-position {
+  justify-content: flex-end;
+}
+
+
+.agent-model-selection{
+  .name{
+    width: 30%
+  }
+  .icon{
+    width: 10%;
+    margin-left: 4px;
+  }
+
+  .model{
+    margin-top: auto;
+    margin-bottom: auto;
+    width: 60%;
+
+    .form-group {
+        margin-bottom: 0;
+    }
+  }
+  .navigation{
+    width: 20%;
+    margin-left: 4px;
+  }
+}
+
+
+/* ===== AWS Bedrock demo page (AWSBedrockImplementation.SNIP_Overview) ===== */
+.aws-bedrock-page {
+  padding: 24px 32px;
+  max-width: none;
+
+  .mx-tabcontainer-tabs-content,
+  .mx-tabcontainer-content {
+    > .mx-tabcontainer-pane { 
+      background: #fff;
+      border: 1px solid #e3e6ec;
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
+      padding: 8px 24px 24px;
+    }
+  }
+  .mx-tabcontainer-tabs { border-bottom: 1px solid #e3e6ec; }
+  .mx-tabcontainer-tabs > li > a { font-weight: 600; padding: 12px 18px; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group textarea.form-control { min-height: 96px; }
+  .btn { min-width: 120px; margin: 8px 0 16px; }
+  .btn + .btn { margin-left: 8px; }
+  .mx-name-actionButton3, .mx-name-actionButton7, .mx-name-actionButton8,
+  .mx-name-actionButton4 { min-width: 0; }
+  .mx-datagrid { margin-bottom: 24px; }
+  h3 { margin-top: 16px; }
+}
+@media (max-width: 767px) {
+  .aws-bedrock-page { padding: 12px; }
+}

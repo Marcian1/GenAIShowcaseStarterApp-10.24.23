@@ -1,0 +1,67 @@
+mdl 1;
+
+create or modify java action AWSBedrockImplementation.JA_BedrockTestConnection folder 'Resources'(
+  /** AWS region to test, for example eu-central-1. */
+  RegionName: String
+) returns String as $Result
+as $$
+		StringBuilder sb = new StringBuilder();
+		String region = RegionName == null ? "" : RegionName.trim();
+		if (!region.matches("^[a-z]{2}(-[a-z]+)+-[0-9]$")) {
+			return "FAIL: The region \"" + region + "\" is not a valid AWS region.";
+		}
+		sb.append("OK: Region ").append(region).append(" is valid\n");
+
+		software.amazon.awssdk.auth.credentials.AwsCredentialsProvider provider;
+		try {
+			provider = software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider.create();
+			provider.resolveCredentials();
+			sb.append("OK: Credentials resolved from the web identity token\n");
+		} catch (Exception e) {
+			return sb.append("FAIL: Could not resolve credentials. ").append(e.getMessage()).toString();
+		}
+
+		software.amazon.awssdk.regions.Region awsRegion = software.amazon.awssdk.regions.Region.of(region);
+		try (software.amazon.awssdk.services.sts.StsClient sts = software.amazon.awssdk.services.sts.StsClient.builder()
+				.credentialsProvider(provider).region(awsRegion).build()) {
+			sb.append("OK: Caller ").append(sts.getCallerIdentity().arn()).append("\n");
+		} catch (Exception e) {
+			return sb.append("FAIL: Could not read the caller identity. ").append(e.getMessage()).toString();
+		}
+
+		try (software.amazon.awssdk.services.bedrock.BedrockClient bedrock = software.amazon.awssdk.services.bedrock.BedrockClient.builder()
+				.credentialsProvider(provider).region(awsRegion).build()) {
+			int count = bedrock.listFoundationModels(r -> {}).modelSummaries().size();
+			sb.append("OK: bedrock:ListFoundationModels is allowed in ").append(region).append(" (").append(count).append(" models visible)");
+		} catch (Exception e) {
+			return sb.append("FAIL: Could not list foundation models. ").append(e.getMessage()).toString();
+		}
+		return sb.toString();
+$$;
+
+create or modify java action AWSBedrockImplementation.JA_EmbeddingResponse_Summary folder 'Resources'(
+  /** The raw JSON returned by Cohere Embed or Titan Embeddings. */
+  ResponseJson: String,
+  /** How many values to include in the preview. */
+  PreviewCount: Integer
+) returns String as $Summary
+as $$
+		com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(ResponseJson);
+		com.fasterxml.jackson.databind.JsonNode vector = root.path("embedding");
+		if (vector.isMissingNode()) {
+			com.fasterxml.jackson.databind.JsonNode embeddings = root.path("embeddings");
+			vector = embeddings.isArray() ? embeddings.path(0) : embeddings.path("float").path(0);
+		}
+		if (!vector.isArray()) {
+			return "0|";
+		}
+		int n = (int) Math.min(PreviewCount == null ? 8L : PreviewCount.longValue(), (long) vector.size());
+		StringBuilder preview = new StringBuilder("[");
+		for (int i = 0; i < n; i++) {
+			if (i > 0) preview.append(", ");
+			preview.append(String.format(java.util.Locale.ROOT, "%.4f", vector.get(i).asDouble()));
+		}
+		if (vector.size() > n) preview.append(", ... ").append(vector.size() - n).append(" more");
+		preview.append("]");
+		return vector.size() + "|" + preview;
+$$;

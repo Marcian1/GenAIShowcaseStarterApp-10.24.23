@@ -1,0 +1,85 @@
+mdl 1;
+
+alter entity AWSBedrockImplementation.AskSession add attribute AnswerCount: Integer default 0;
+alter entity AWSBedrockImplementation.AskEntry drop attribute Summary;
+grant read *, write * on entity AWSBedrockImplementation.AskSession to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.AskEntry to AWSBedrockImplementation.Admin;
+drop microflow AWSBedrockImplementation.ACT_Ask;
+drop microflow AWSBedrockImplementation.ACT_AskSession_ClearAnswers;
+
+/** Removes all answers of the session. */
+create or modify microflow AWSBedrockImplementation.ACT_AskSession_ClearAnswers (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  retrieve $Entries from $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  delete $Entries;
+  change $AskSession (Question = empty, AnswerCount = 0) refresh;
+  return;
+end;
+
+
+/** Searches the knowledge base, asks the chat model with the numbered tickets as context and adds the answer to the session. */
+create or modify microflow AWSBedrockImplementation.ACT_Ask (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  if $AskSession/Question = empty or trim($AskSession/Question) = '' then
+    validation feedback $AskSession/Question message 'Write a question first';
+    return;
+  end if;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $Database = empty or $Config/ChunkCount = 0 then
+    show message 'The knowledge base is empty. Create the chunks on the Tickets tab first.' type Error blocking;
+    return;
+  end if;
+  declare $StartedAt DateTime = [%CurrentDateTime%];
+  $PageHelper = create AWSBedrockImplementation.PageHelper (
+    SearchItem = $AskSession/Question,
+    UserPrompt = $AskSession/Question,
+    SystemPrompt = $AskSession/Instructions,
+    MaxResults = $AskSession/MaxTickets,
+    MinimumSimilarity = $AskSession/Strictness
+  );
+  call microflow AWSBedrockImplementation.ACT_Pagehelper_Send_SearchItem(PageHelper = $PageHelper);
+  retrieve $ChunkList from $PageHelper/AWSBedrockImplementation.TicketChunk_PageHelper;
+  $FoundCount = count $ChunkList;
+  $AskEntry = create AWSBedrockImplementation.AskEntry (
+    Question = $AskSession/Question,
+    CreatedAt = [%CurrentDateTime%],
+    ModelName = $ChatModel/Name,
+    StrictnessUsed = $AskSession/Strictness,
+    StrictnessText = $AskSession/StrictnessLabel,
+    SourceCount = $FoundCount
+  );
+  add $AskEntry to $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  change $AskSession (AnswerCount = $AskSession/AnswerCount + 1);
+  if $FoundCount = 0 then
+    change $AskEntry (NoMatch = true);
+  else
+    declare $Context String = '';
+    loop $TicketChunk in $ChunkList
+    begin
+      $ContextText = call microflow AWSBedrockImplementation.SUB_AskEntry_AddSource(AskEntry = $AskEntry, TicketChunk = $TicketChunk, Number = $currentIndex + 1);
+      set $Context = $Context + $ContextText + '
+
+';
+    end loop;
+    change $PageHelper (TicketData = $Context);
+    call microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send(PageHelper = $PageHelper);
+    if $PageHelper/PromptResponse = empty then
+      change $AskEntry (ErrorText = 'The model did not return an answer. Check the connection and the chat model.');
+    else
+      change $AskEntry (Answer = $PageHelper/PromptResponse, HasAnswer = true, SentToModel = $Context);
+    end if;
+  end if;
+  change $AskEntry (Seconds = millisecondsBetween($StartedAt, [%CurrentDateTime%]) div 1000);
+  change $AskSession (Question = empty) refresh;
+  return;
+end;
+
+

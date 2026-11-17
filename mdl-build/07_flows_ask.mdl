@@ -1,0 +1,184 @@
+mdl 1;
+
+/** Data source of the Ask tickets tab: a new session with the default settings. */
+create or modify microflow AWSBedrockImplementation.DS_AskSession ()
+returns AWSBedrockImplementation.AskSession
+folder 'Ask'
+begin
+  $AskSession = create AWSBedrockImplementation.AskSession ();
+  return $AskSession;
+end;
+
+/** Data source of the answers list: the answers of the session, newest first. */
+create or modify microflow AWSBedrockImplementation.DS_AskEntries (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+returns List of AWSBedrockImplementation.AskEntry as $SortedEntries
+folder 'Ask'
+begin
+  retrieve $Entries from $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  $SortedEntries = sort $Entries by CreatedAt desc;
+  return $SortedEntries;
+end;
+
+/** On change of the strictness slider: updates the Loose / Balanced / Strict label. */
+create or modify microflow AWSBedrockImplementation.ACT_AskSession_StrictnessChanged (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  change $AskSession (
+    StrictnessLabel = if $AskSession/Strictness < 0.2 then 'Loose' else if $AskSession/Strictness < 0.45 then 'Balanced' else 'Strict'
+  ) refresh;
+  return;
+end;
+
+/** An example question button: puts the example in the question box. */
+create or modify microflow AWSBedrockImplementation.ACT_AskSession_UseExample (
+  $AskSession: AWSBedrockImplementation.AskSession,
+  $Example: String
+)
+folder 'Ask'
+begin
+  change $AskSession (Question = $Example) refresh;
+  return;
+end;
+
+/** Removes all answers of the session. */
+create or modify microflow AWSBedrockImplementation.ACT_AskSession_ClearAnswers (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  retrieve $Entries from $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  delete $Entries;
+  change $AskSession (Question = empty) refresh;
+  return;
+end;
+
+/** Adds one numbered source card for a retrieved ticket chunk and returns the context text for the model. */
+create or modify microflow AWSBedrockImplementation.SUB_AskEntry_AddSource (
+  $AskEntry: AWSBedrockImplementation.AskEntry,
+  $TicketChunk: AWSBedrockImplementation.TicketChunk,
+  $Number: Integer
+)
+returns String as $ContextText
+folder 'Ask'
+begin
+  declare $TicketNumber Integer = parseInteger(substring($TicketChunk/HumanReadableID, 7));
+  retrieve $Ticket from AWSBedrockImplementation.Ticket
+    where TicketId = $TicketNumber
+    first;
+  declare $Title String = $TicketChunk/HumanReadableID;
+  declare $Snippet String = $TicketChunk/InputText;
+  declare $TicketRef String = $TicketChunk/HumanReadableID;
+  declare $Context String = '[' + toString($Number) + '] ' + $TicketChunk/InputText;
+  if $Ticket != empty then
+    set $Title = $Ticket/Subject;
+    set $Snippet = if length($Ticket/Description) > 300 then substring($Ticket/Description, 0, 297) + '...' else $Ticket/Description;
+    set $TicketRef = 'Ticket ' + toString($Ticket/TicketId) + ' · ' + getCaption($Ticket/Status);
+    set $Context = '[' + toString($Number) + '] Ticket ' + toString($Ticket/TicketId) + ': ' + $Ticket/Subject + '
+Description: ' + $Ticket/Description + (if $Ticket/Resolution != empty and trim($Ticket/Resolution) != '' then '
+Resolution: ' + $Ticket/Resolution else '');
+  end if;
+  $AskSource = create AWSBedrockImplementation.AskSource (
+    Number = $Number,
+    Title = $Title,
+    Snippet = $Snippet,
+    TicketRef = $TicketRef,
+    Similarity = $TicketChunk/Similarity,
+    SimilarityPercent = $TicketChunk/Similarity * 100
+  );
+  add $AskSource to $AskEntry/AWSBedrockImplementation.AskEntry_AskSource;
+  return $Context;
+end;
+
+/** Searches the knowledge base, asks the chat model with the numbered tickets as context and adds the answer to the session. */
+create or modify microflow AWSBedrockImplementation.ACT_Ask (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  if $AskSession/Question = empty or trim($AskSession/Question) = '' then
+    validation feedback $AskSession/Question message 'Write a question first';
+    return;
+  end if;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $Database = empty or $Config/ChunkCount = 0 then
+    show message 'The knowledge base is empty. Create the chunks on the Tickets tab first.' type Error blocking;
+    return;
+  end if;
+  declare $StartedAt DateTime = [%CurrentDateTime%];
+  $PageHelper = create AWSBedrockImplementation.PageHelper (
+    SearchItem = $AskSession/Question,
+    UserPrompt = $AskSession/Question,
+    SystemPrompt = $AskSession/Instructions,
+    MaxResults = $AskSession/MaxTickets,
+    MinimumSimilarity = $AskSession/Strictness
+  );
+  call microflow AWSBedrockImplementation.ACT_Pagehelper_Send_SearchItem(PageHelper = $PageHelper);
+  retrieve $ChunkList from $PageHelper/AWSBedrockImplementation.TicketChunk_PageHelper;
+  $FoundCount = count $ChunkList;
+  $AskEntry = create AWSBedrockImplementation.AskEntry (
+    Question = $AskSession/Question,
+    CreatedAt = [%CurrentDateTime%],
+    ModelName = $ChatModel/Name,
+    StrictnessUsed = $AskSession/Strictness,
+    StrictnessText = $AskSession/StrictnessLabel,
+    SourceCount = $FoundCount
+  );
+  add $AskEntry to $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  if $FoundCount = 0 then
+    change $AskEntry (NoMatch = true);
+  else
+    declare $Context String = '';
+    loop $TicketChunk in $ChunkList
+    begin
+      $ContextText = call microflow AWSBedrockImplementation.SUB_AskEntry_AddSource(AskEntry = $AskEntry, TicketChunk = $TicketChunk, Number = $currentIndex + 1);
+      set $Context = $Context + $ContextText + '
+
+';
+    end loop;
+    change $PageHelper (TicketData = $Context);
+    call microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send(PageHelper = $PageHelper);
+    if $PageHelper/PromptResponse = empty then
+      change $AskEntry (ErrorText = 'The model did not return an answer. Check the connection and the chat model.');
+    else
+      change $AskEntry (Answer = $PageHelper/PromptResponse, HasAnswer = true, SentToModel = $Context);
+    end if;
+  end if;
+  change $AskEntry (Seconds = millisecondsBetween($StartedAt, [%CurrentDateTime%]) div 1000);
+  change $AskSession (Question = empty) refresh;
+  return;
+end;
+
+/** The Ask again link of an answer: asks the same question again with the current settings. */
+create or modify microflow AWSBedrockImplementation.ACT_AskEntry_AskAgain (
+  $AskEntry: AWSBedrockImplementation.AskEntry,
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  change $AskSession (Question = $AskEntry/Question);
+  call microflow AWSBedrockImplementation.ACT_Ask(AskSession = $AskSession);
+  return;
+end;
+
+/** The Loosen the match button of an answer without results: asks again with a strictness 0.15 lower. */
+create or modify microflow AWSBedrockImplementation.ACT_AskEntry_LoosenAndAsk (
+  $AskEntry: AWSBedrockImplementation.AskEntry,
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  declare $LooserStrictness Decimal = $AskEntry/StrictnessUsed - 0.15;
+  if $LooserStrictness < 0 then
+    set $LooserStrictness = 0;
+  end if;
+  change $AskSession (Question = $AskEntry/Question, Strictness = $LooserStrictness);
+  call microflow AWSBedrockImplementation.ACT_AskSession_StrictnessChanged(AskSession = $AskSession);
+  call microflow AWSBedrockImplementation.ACT_Ask(AskSession = $AskSession);
+  return;
+end;

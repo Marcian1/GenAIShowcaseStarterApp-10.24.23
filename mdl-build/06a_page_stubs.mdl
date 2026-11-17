@@ -1,0 +1,7 @@
+mdl 1;
+create page AWSBedrockImplementation.Ticket_Edit (
+  Title: 'Ticket',
+  Layout: Atlas_Core.PopupLayout,
+  Params: ( $Ticket: AWSBedrockImplementation.Ticket )
+) {
+};

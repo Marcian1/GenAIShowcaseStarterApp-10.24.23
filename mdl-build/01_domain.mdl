@@ -1,0 +1,118 @@
+mdl 1;
+
+create enumeration AWSBedrockImplementation.ENUM_ModelFamily (
+  Claude 'Anthropic Claude (chat)',
+  Cohere 'Cohere Embed (embeddings)',
+  Titan 'Amazon Titan Embeddings V2 (embeddings)'
+) folder 'BedrockModel';
+
+create enumeration AWSBedrockImplementation.ENUM_Effort (
+  low 'Low',
+  medium 'Medium',
+  high 'High'
+) folder 'BedrockModel';
+
+create enumeration AWSBedrockImplementation.ENUM_CohereInputType (
+  search_document 'search_document',
+  search_query 'search_query',
+  classification 'classification',
+  clustering 'clustering'
+) folder 'BedrockModel';
+
+create enumeration AWSBedrockImplementation.ENUM_CohereTruncate (
+  NONE 'NONE',
+  LEFT 'LEFT',
+  RIGHT 'RIGHT'
+) folder 'BedrockModel';
+
+create persistent entity AWSBedrockImplementation.BedrockModel (
+  Name: String(200) not null error message 'Enter a display name',
+  ModelId: String(300) not null error message 'Enter the model ID or inference profile',
+  Family: Enumeration(AWSBedrockImplementation.ENUM_ModelFamily) default AWSBedrockImplementation.ENUM_ModelFamily.Claude,
+  MaxTokens: Integer default 5000,
+  Effort: Enumeration(AWSBedrockImplementation.ENUM_Effort) default AWSBedrockImplementation.ENUM_Effort.high,
+  Dimension: Integer default 1024,
+  InputType: Enumeration(AWSBedrockImplementation.ENUM_CohereInputType) default AWSBedrockImplementation.ENUM_CohereInputType.search_document,
+  Truncate: Enumeration(AWSBedrockImplementation.ENUM_CohereTruncate) default AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT,
+  Normalize: Boolean default true
+);
+
+alter entity AWSBedrockImplementation.Config add attribute AwsTestOk: Boolean default false;
+alter entity AWSBedrockImplementation.Config add attribute AwsTestedAt: DateTime;
+alter entity AWSBedrockImplementation.Config add attribute AwsTestResult: String(unlimited);
+alter entity AWSBedrockImplementation.Config add attribute PgTestOk: Boolean default false;
+alter entity AWSBedrockImplementation.Config add attribute PgTestedAt: DateTime;
+alter entity AWSBedrockImplementation.Config add attribute ChunksModelId: String(300);
+alter entity AWSBedrockImplementation.Config add attribute ChunksCreatedAt: DateTime;
+alter entity AWSBedrockImplementation.Config add attribute TicketCount: Integer default 0;
+alter entity AWSBedrockImplementation.Config add attribute ChunkCount: Integer default 0;
+alter entity AWSBedrockImplementation.Config add attribute StaleTicketCount: Integer default 0;
+
+create association AWSBedrockImplementation.Config_ChatModel
+  from AWSBedrockImplementation.Config to AWSBedrockImplementation.BedrockModel
+  type Reference owner Default on delete set null;
+create association AWSBedrockImplementation.Config_EmbeddingModel
+  from AWSBedrockImplementation.Config to AWSBedrockImplementation.BedrockModel
+  type Reference owner Default on delete set null;
+create association AWSBedrockImplementation.Config_DatabaseConfiguration
+  from AWSBedrockImplementation.Config to PgVectorKnowledgeBase.DatabaseConfiguration
+  type Reference owner Default on delete set null;
+
+create non-persistent entity AWSBedrockImplementation.TrySession (
+  Input: String(unlimited),
+  System: String(unlimited),
+  MaxTokens: Integer default 5000,
+  Effort: Enumeration(AWSBedrockImplementation.ENUM_Effort) default AWSBedrockImplementation.ENUM_Effort.high,
+  Dimension: Integer default 1024,
+  InputType: Enumeration(AWSBedrockImplementation.ENUM_CohereInputType) default AWSBedrockImplementation.ENUM_CohereInputType.search_document,
+  Truncate: Enumeration(AWSBedrockImplementation.ENUM_CohereTruncate) default AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT,
+  Normalize: Boolean default true,
+  HasResult: Boolean default false,
+  IsChat: Boolean default true,
+  Output: String(unlimited),
+  VectorPreview: String(unlimited),
+  Seconds: Decimal default 0,
+  InputTokens: Integer default 0,
+  OutputTokens: Integer default 0,
+  RawRequest: String(unlimited),
+  RawResponse: String(unlimited)
+);
+create association AWSBedrockImplementation.TrySession_BedrockModel
+  from AWSBedrockImplementation.TrySession to AWSBedrockImplementation.BedrockModel
+  type Reference owner Default on delete set null;
+
+create non-persistent entity AWSBedrockImplementation.AskSession (
+  Question: String(unlimited),
+  MaxTickets: Integer default 5,
+  Strictness: Decimal default 0.25,
+  Instructions: String(unlimited) default 'You are a support assistant. Answer only from the numbered tickets and cite them like [1].',
+  StrictnessLabel: String(20) default 'Balanced'
+);
+
+create non-persistent entity AWSBedrockImplementation.AskEntry (
+  Question: String(unlimited),
+  Answer: String(unlimited),
+  ModelName: String(200),
+  Seconds: Decimal default 0,
+  CreatedAt: DateTime,
+  NoMatch: Boolean default false,
+  HasAnswer: Boolean default false,
+  ErrorText: String(unlimited),
+  StrictnessUsed: Decimal default 0,
+  StrictnessText: String(200),
+  SourceCount: Integer default 0,
+  SentToModel: String(unlimited),
+  Summary: String(500)
+);
+create association AWSBedrockImplementation.AskEntry_AskSession
+  from AWSBedrockImplementation.AskEntry to AWSBedrockImplementation.AskSession
+  type Reference owner Default on delete cascade;
+create association AWSBedrockImplementation.AskEntry_TicketChunk
+  from AWSBedrockImplementation.AskEntry to AWSBedrockImplementation.TicketChunk
+  type ReferenceSet owner Default on delete set null;
+
+grant read *, write * on entity AWSBedrockImplementation.BedrockModel to AWSBedrockImplementation.Admin;
+grant read * on entity AWSBedrockImplementation.BedrockModel to AWSBedrockImplementation.User;
+grant read *, write * on entity AWSBedrockImplementation.TrySession to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.AskSession to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.AskEntry to AWSBedrockImplementation.Admin;

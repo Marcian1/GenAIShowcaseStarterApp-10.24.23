@@ -1,0 +1,19 @@
+# mxcli working directory: machine-local constant values (may contain
+# secrets), the run/test handshake, and runtime logs. Never commit these.
+.mxcli/
+
+# Mendix-generated and machine-local files
+.mendix-cache/
+deployment/
+theme-cache/
+vendorlib/
+project-settings.user.json
+*.mpr.lock
+*.mpr.bak
+
+# Eclipse files tied to this machine's Mendix installation
+.classpath
+*.launch
+
+# Local AWS mock runtime files (token, pid, logs)
+bedrock-local-emulator/.runtime/

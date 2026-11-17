@@ -1,0 +1,178 @@
+mdl 1;
+
+drop microflow AWSBedrockImplementation.DS_Config;
+drop microflow AWSBedrockImplementation.ACT_Config_Save;
+
+/** Creates the three default models (Claude, Cohere, Titan) the first time the app is opened. */
+create or modify microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults ()
+folder 'BedrockModel'
+begin
+  retrieve $ModelList from AWSBedrockImplementation.BedrockModel;
+  $ModelCount = count $ModelList;
+  if $ModelCount = 0 then
+    $Claude = create AWSBedrockImplementation.BedrockModel (Name = 'Claude Sonnet 5', ModelId = 'eu.anthropic.claude-sonnet-5', Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.high) commit;
+    $Cohere = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Embed v4', ModelId = 'eu.cohere.embed-v4:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere, Dimension = 1024, InputType = AWSBedrockImplementation.ENUM_CohereInputType.search_document, Truncate = AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT) commit;
+    $Titan = create AWSBedrockImplementation.BedrockModel (Name = 'Titan Text Embeddings V2', ModelId = 'amazon.titan-embed-text-v2:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan, Dimension = 1024, Normalize = true) commit;
+  end if;
+  return;
+end;
+
+/** Selects a chat model, an embedding model and a vector database on the Config when none is selected yet. */
+create or modify microflow AWSBedrockImplementation.SUB_Config_PickMissingDefaults (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $ChatModel = empty then
+    retrieve $FirstChatModel from AWSBedrockImplementation.BedrockModel
+      where Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude
+      first;
+    change $Config (AWSBedrockImplementation.Config_ChatModel = $FirstChatModel);
+  end if;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  if $EmbeddingModel = empty then
+    retrieve $FirstEmbeddingModel from AWSBedrockImplementation.BedrockModel
+      where Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere
+      first;
+    change $Config (AWSBedrockImplementation.Config_EmbeddingModel = $FirstEmbeddingModel);
+  end if;
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  if $Database = empty then
+    retrieve $FirstDatabase from PgVectorKnowledgeBase.DatabaseConfiguration
+      sort by DisplayName asc
+      first;
+    change $Config (AWSBedrockImplementation.Config_DatabaseConfiguration = $FirstDatabase);
+  end if;
+  commit $Config;
+  return;
+end;
+
+/** Returns the one Config object. Creates it, with default models, when the app is opened for the first time. */
+create or modify microflow AWSBedrockImplementation.DS_Config ()
+returns AWSBedrockImplementation.Config
+folder 'Config'
+begin
+  retrieve $Config from AWSBedrockImplementation.Config first;
+  if $Config = empty then
+    $NewConfig = create AWSBedrockImplementation.Config (BedrockRegion = 'eu-central-1') commit;
+    call microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults();
+    call microflow AWSBedrockImplementation.SUB_Config_PickMissingDefaults(Config = $NewConfig);
+    return $NewConfig;
+  else
+    call microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults();
+    call microflow AWSBedrockImplementation.SUB_Config_PickMissingDefaults(Config = $Config);
+    return $Config;
+  end if;
+end;
+
+/** Recounts tickets and tickets changed since the knowledge base was built. These counts feed the setup status. */
+create or modify microflow AWSBedrockImplementation.SUB_Config_RefreshCounts (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  retrieve $TicketList from AWSBedrockImplementation.Ticket;
+  $TicketCount = count $TicketList;
+  declare $StaleCount Integer = $TicketCount;
+  if $Config/ChunksCreatedAt != empty then
+    retrieve $StaleList from AWSBedrockImplementation.Ticket
+      where ChangedDateTime > $Config/ChunksCreatedAt or ChangedDateTime = empty;
+    $StaleListCount = count $StaleList;
+    set $StaleCount = $StaleListCount;
+  end if;
+  change $Config (TicketCount = $TicketCount, StaleTicketCount = $StaleCount);
+  commit $Config refresh;
+  return;
+end;
+
+/** Data source of the AWS Bedrock page: the Config with fresh counts. */
+create or modify microflow AWSBedrockImplementation.DS_Config_Setup ()
+returns AWSBedrockImplementation.Config
+folder 'Config'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshCounts(Config = $Config);
+  return $Config;
+end;
+
+/** On change of a model picker: saves the Config so the status and the other tabs follow. */
+create or modify microflow AWSBedrockImplementation.ACT_Config_Commit (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  commit $Config refresh;
+  return;
+end;
+
+/** On change of the vector database picker: the earlier test no longer applies to the new database. */
+create or modify microflow AWSBedrockImplementation.ACT_Config_DatabaseChanged (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  change $Config (PgTestOk = false, PgTestedAt = empty);
+  commit $Config refresh;
+  return;
+end;
+
+/** Saves the region and guardrail. The AWS test is reset because the region may have changed. */
+create or modify microflow AWSBedrockImplementation.ACT_Config_Save (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  change $Config (AwsTestOk = false, AwsTestResult = empty);
+  commit $Config refresh;
+  show message 'Saved. Click Test connection to check the new settings.' type Information blocking;
+  return;
+end;
+
+/** Checks the AWS credentials, caller identity and Bedrock access, and stores the result on the Config. */
+create or modify microflow AWSBedrockImplementation.ACT_Connection_Test (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  $Result = call java action AWSBedrockImplementation.JA_BedrockTestConnection(RegionName = $Config/BedrockRegion) on error without rollback begin
+    change $Config (AwsTestOk = false, AwsTestedAt = [%CurrentDateTime%], AwsTestResult = '- ✗ The test could not run. ' + $latestError/Message);
+    commit $Config refresh;
+    return;
+  end error;
+  declare $Failed Boolean = contains($Result, 'FAIL:');
+  change $Config (AwsTestOk = not($Failed), AwsTestedAt = [%CurrentDateTime%], AwsTestResult = replaceAll(replaceAll($Result, 'OK: ', '- ✓ '), 'FAIL: ', '- ✗ '));
+  commit $Config refresh;
+  return;
+end;
+
+/** Tests a pgvector database (connection and vector extension). Records the result when it is the selected database. */
+create or modify microflow AWSBedrockImplementation.ACT_PgDatabase_Test (
+  $DatabaseConfiguration: PgVectorKnowledgeBase.DatabaseConfiguration
+)
+folder 'Config'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  declare $Success Boolean = false;
+  declare $Message String = 'Could not connect. Check the JDBC URL, user and password.';
+  $Connected = call microflow PgVectorKnowledgeBase.DatabaseConfiguration_TestConnection(DatabaseConfiguration = $DatabaseConfiguration);
+  if $Connected then
+    set $Message = 'Connected, but the pgvector extension could not be created.';
+    $ExtensionReady = call microflow PgVectorKnowledgeBase.DatabaseConfiguration_CreateExtension(DatabaseConfiguration = $DatabaseConfiguration);
+    if $ExtensionReady then
+      set $Success = true;
+      set $Message = 'Connected, and the pgvector extension is available.';
+    end if;
+  end if;
+  retrieve $SelectedDatabase from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  if $SelectedDatabase = $DatabaseConfiguration then
+    change $Config (PgTestOk = $Success, PgTestedAt = [%CurrentDateTime%]);
+    commit $Config refresh;
+  end if;
+  if $Success then
+    show message '{1}' type Information with ({1} = $Message) blocking;
+  else
+    show message '{1}' type Error with ({1} = $Message) blocking;
+  end if;
+  return;
+end;

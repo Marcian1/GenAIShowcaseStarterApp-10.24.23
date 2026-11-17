@@ -1,0 +1,17 @@
+mdl 1;
+
+create non-persistent entity AWSBedrockImplementation.AskSource (
+  Number: Integer default 0,
+  Title: String(500),
+  Snippet: String(1000),
+  TicketRef: String(200),
+  Similarity: Decimal default 0,
+  SimilarityPercent: Decimal default 0
+);
+create association AWSBedrockImplementation.AskEntry_AskSource
+  from AWSBedrockImplementation.AskEntry to AWSBedrockImplementation.AskSource
+  type ReferenceSet owner Default on delete set null;
+create association AWSBedrockImplementation.AskSession_AskEntry
+  from AWSBedrockImplementation.AskSession to AWSBedrockImplementation.AskEntry
+  type ReferenceSet owner Default on delete set null;
+grant read *, write * on entity AWSBedrockImplementation.AskSource to AWSBedrockImplementation.Admin;

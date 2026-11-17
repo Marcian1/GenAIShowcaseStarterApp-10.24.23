@@ -1,0 +1,41 @@
+mdl 1;
+
+drop microflow AWSBedrockImplementation.SUB_AskEntry_AddSource;
+
+/** Adds one numbered source card for a retrieved ticket chunk and returns the context text for the model. */
+create or modify microflow AWSBedrockImplementation.SUB_AskEntry_AddSource (
+  $AskEntry: AWSBedrockImplementation.AskEntry,
+  $TicketChunk: AWSBedrockImplementation.TicketChunk,
+  $Number: Integer
+)
+returns String as $ContextText
+folder 'Ask'
+begin
+  declare $TicketNumber Integer = parseInteger(substring($TicketChunk/HumanReadableID, 7));
+  retrieve $Ticket from AWSBedrockImplementation.Ticket
+    where TicketId = $TicketNumber
+    first;
+  declare $Title String = $TicketChunk/HumanReadableID;
+  declare $Snippet String = $TicketChunk/InputText;
+  declare $TicketRef String = $TicketChunk/HumanReadableID;
+  declare $Context String = '[' + toString($Number) + '] ' + $TicketChunk/InputText;
+  if $Ticket != empty then
+    set $Title = $Ticket/Subject;
+    set $Snippet = if length($Ticket/Description) > 300 then substring($Ticket/Description, 0, 297) + '...' else $Ticket/Description;
+    set $TicketRef = 'Ticket ' + toString($Ticket/TicketId) + (if $Ticket/Status != empty then ' · ' + getCaption($Ticket/Status) else '');
+    set $Context = '[' + toString($Number) + '] Ticket ' + toString($Ticket/TicketId) + ': ' + $Ticket/Subject + '
+Description: ' + $Ticket/Description + (if $Ticket/Resolution != empty and trim($Ticket/Resolution) != '' then '
+Resolution: ' + $Ticket/Resolution else '');
+  end if;
+  $AskSource = create AWSBedrockImplementation.AskSource (
+    Number = $Number,
+    Title = $Title,
+    Snippet = $Snippet,
+    TicketRef = $TicketRef,
+    Similarity = $TicketChunk/Similarity,
+    SimilarityPercent = $TicketChunk/Similarity * 100
+  );
+  add $AskSource to $AskEntry/AWSBedrockImplementation.AskEntry_AskSource;
+  return $Context;
+end;
+

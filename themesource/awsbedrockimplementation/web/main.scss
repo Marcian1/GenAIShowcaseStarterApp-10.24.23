@@ -1,0 +1,532 @@
+@import '../../../theme/web/custom-variables';
+
+// AWS Bedrock Implementation: styling for the AWS Bedrock demo page and its pop-ups.
+// Every class starts with `bedrock-`. Plain Atlas widgets and design properties do the rest.
+
+$bedrock-soft-bg: #f4f5f8;
+$bedrock-line: #e0e2e8;
+$bedrock-muted: #5f6675;
+$bedrock-brand-soft: #e9edff;
+$bedrock-ok-soft: #e6f5e6;
+$bedrock-warn-soft: #fdf1d8;
+$bedrock-bad-soft: #fce8ea;
+$bedrock-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+.bedrock-page-header {
+  margin-bottom: 16px;
+}
+
+// ---- Cards -----------------------------------------------------------------
+.bedrock-card {
+  background: #fff;
+  border: 1px solid $bedrock-line;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(10, 19, 36, 0.05);
+  margin-bottom: 16px;
+}
+
+.bedrock-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid $bedrock-line;
+}
+
+.bedrock-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.bedrock-card-subtitle {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: $bedrock-muted;
+}
+
+.bedrock-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.bedrock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bedrock-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+
+  > * {
+    flex: 1 1 180px;
+  }
+}
+
+.bedrock-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bedrock-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: $brand-primary;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+// ---- Text helpers ----------------------------------------------------------
+.bedrock-hint {
+  display: block;
+  font-size: 12px;
+  color: $bedrock-muted;
+}
+
+.bedrock-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: $bedrock-muted;
+}
+
+.bedrock-mono {
+  font-family: $bedrock-mono;
+  font-size: 12px;
+}
+
+textarea.bedrock-mono,
+.bedrock-mono textarea {
+  font-family: $bedrock-mono;
+  font-size: 12px;
+}
+
+.bedrock-muted {
+  color: $bedrock-muted;
+}
+
+.bedrock-grow {
+  flex: 1;
+}
+
+.bedrock-cell-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+// ---- Badges and notes ------------------------------------------------------
+.bedrock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.bedrock-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: $bedrock-brand-soft;
+  color: $brand-primary;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bedrock-badge-ok {
+  background: $bedrock-ok-soft;
+  color: darken($brand-success, 12%);
+}
+
+.bedrock-badge-warn {
+  background: $bedrock-warn-soft;
+  color: darken($brand-warning, 22%);
+}
+
+.bedrock-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  background: $bedrock-brand-soft;
+  font-size: 13px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.bedrock-note-good {
+  background: $bedrock-ok-soft;
+}
+
+.bedrock-note-warn {
+  background: $bedrock-warn-soft;
+}
+
+.bedrock-note-bad {
+  background: $bedrock-bad-soft;
+}
+
+.bedrock-response {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid $bedrock-line;
+  border-radius: 4px;
+  background: $bedrock-soft-bg;
+  overflow-wrap: anywhere;
+}
+
+// ---- Setup status ----------------------------------------------------------
+.bedrock-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+
+  .mx-name-pbReady,
+  .widget-progress-bar {
+    flex: 1;
+  }
+}
+
+.bedrock-progress-count {
+  font-family: $bedrock-mono;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bedrock-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 12px 18px;
+  padding: 16px 18px;
+}
+
+.bedrock-status-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bedrock-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bedrock-status-ok {
+  background: $bedrock-ok-soft;
+  color: darken($brand-success, 12%);
+}
+
+.bedrock-status-todo {
+  background: $bedrock-warn-soft;
+  color: darken($brand-warning, 22%);
+}
+
+.bedrock-status-text {
+  min-width: 0;
+}
+
+.bedrock-status-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bedrock-status-detail {
+  display: block;
+  font-size: 12px;
+  color: $bedrock-muted;
+  overflow-wrap: anywhere;
+}
+
+// ---- Ask tickets -----------------------------------------------------------
+.bedrock-ask {
+  max-width: 880px;
+}
+
+.bedrock-composer textarea {
+  min-height: 92px;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.bedrock-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn.bedrock-example {
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: normal;
+  text-align: left;
+}
+
+.bedrock-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bedrock-answers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 4px;
+
+  h4 {
+    margin: 0;
+  }
+}
+
+.bedrock-empty {
+  padding: 36px 18px;
+  text-align: center;
+  color: $bedrock-muted;
+
+  h3 {
+    margin-bottom: 6px;
+    color: inherit;
+  }
+}
+
+.bedrock-entry {
+  margin-top: 16px;
+}
+
+.bedrock-entry-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid $bedrock-line;
+  border-radius: 6px 6px 0 0;
+  background: $bedrock-soft-bg;
+}
+
+.bedrock-entry-question {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.bedrock-entry-body {
+  padding: 16px 18px;
+}
+
+.bedrock-entry-answer {
+  font-size: 14.5px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+
+  p + p,
+  ul {
+    margin-top: 10px;
+  }
+}
+
+.bedrock-sources-block {
+  margin-top: 16px;
+}
+
+.bedrock-sources > ul,
+.bedrock-sources .mx-listview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bedrock-source {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 10px 12px;
+  border: 1px solid $bedrock-line;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.bedrock-source-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bedrock-source-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 4px;
+  background: $bedrock-brand-soft;
+  color: $brand-primary;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bedrock-source-snippet {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  color: $bedrock-muted;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.bedrock-source-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .progress {
+    flex: 1;
+    margin: 0;
+  }
+}
+
+.bedrock-entry-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid $bedrock-line;
+}
+
+// ---- Top bar layout (AWSBedrockImplementation.Layout_TopBar) -----------------
+// No left side navigation: the menu bar lives in the top bar and the page uses the full width.
+.bedrock-layout-topbar {
+  .region-content {
+    padding-left: 0;
+  }
+
+  .topbar-content .mx-menubar {
+    overflow: visible;
+  }
+}
+
+// ---- Data grids on the demo page -----------------------------------------------
+.bedrock-card .widget-datagrid,
+.aws-bedrock-page .widget-datagrid {
+  // Keep every row compact: headings inside cells must not blow up the row height.
+  .td {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+    vertical-align: middle;
+
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+  }
+
+  .th {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  // The "show/hide columns" eye icon: small and quiet.
+  .column-selector-button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+
+    svg {
+      width: 14px;
+      height: 14px;
+      margin: 7px;
+    }
+  }
+}
+
+// Ticket subject: one line title, description clamped to two lines under it.
+.bedrock-cell-title {
+  display: block;
+  margin: 0;
+  max-width: 520px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  + .bedrock-hint {
+    display: -webkit-box;
+    max-width: 520px;
+    margin-top: 2px;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+
+// Buttons inside grid rows must not use the page-wide 120px minimum width.
+.aws-bedrock-page .widget-datagrid .btn {
+  min-width: 0;
+  margin: 0;
+}
+
+// Let grid cells shrink instead of overlapping their neighbours.
+.aws-bedrock-page .widget-datagrid {
+  .td,
+  .th {
+    min-width: 0;
+  }
+
+  .td {
+    overflow: hidden;
+  }
+}

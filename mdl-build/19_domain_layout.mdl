@@ -1,0 +1,96 @@
+mdl 1;
+
+-- Domain model layout: four labelled areas, every entity on a grid, every association a straight line that touches no other box.
+
+drop annotation 'Cohere' in AWSBedrockImplementation;
+drop annotation 'Titan Embeddings V2' in AWSBedrockImplementation;
+
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Setup and models
+Config holds the connection settings, the selected models and database, and the setup status. BedrockModel is one configured model. Ticket and TicketChunk are the demo data.$$,
+  Position: (60, 60),
+  Width: 300
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Try a model
+TrySession is the state of the Try pop-up (not stored).$$,
+  Position: (60, 760),
+  Width: 300
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Ask tickets: a session holds the settings, each answer is an entry with its numbered sources (not stored).$$,
+  Position: (900, 790),
+  Width: 1100
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Bedrock payloads: Claude, Cohere and Titan requests and responses. The export and import mappings turn these into the JSON of the InvokeModel calls, so do not rename them.$$,
+  Position: (60, 1450),
+  Width: 1000
+);
+
+-- Setup and models
+alter entity AWSBedrockImplementation.BedrockModel set position (500, 330);
+alter entity AWSBedrockImplementation.Config set position (1100, 420);
+alter entity AWSBedrockImplementation.Ticket set position (1700, 250);
+alter entity AWSBedrockImplementation.TicketChunk set position (1700, 600);
+alter entity AWSBedrockImplementation.PageHelper set position (2150, 600);
+alter entity AWSBedrockImplementation.ModelHelper set position (2150, 250);
+
+-- Try a model
+alter entity AWSBedrockImplementation.TrySession set position (500, 1100);
+
+-- Ask tickets
+alter entity AWSBedrockImplementation.AskSession set position (1100, 1050);
+alter entity AWSBedrockImplementation.AskEntry set position (1600, 1050);
+alter entity AWSBedrockImplementation.AskSource set position (2100, 1050);
+
+-- Anthropic payloads
+alter entity AWSBedrockImplementation.AnthropicRequest set position (700, 1700);
+alter entity AWSBedrockImplementation.Messages set position (1150, 1580);
+alter entity AWSBedrockImplementation.Message set position (1600, 1580);
+alter entity AWSBedrockImplementation.Thinking set position (1150, 1730);
+alter entity AWSBedrockImplementation.Output_config set position (1150, 1880);
+alter entity AWSBedrockImplementation.AnthropicResponse set position (700, 2300);
+alter entity AWSBedrockImplementation.Content set position (1150, 2300);
+alter entity AWSBedrockImplementation.ContentItem set position (1600, 2300);
+alter entity AWSBedrockImplementation.Usage set position (1150, 2450);
+
+-- Cohere payloads
+alter entity AWSBedrockImplementation.Embedding_type set position (700, 2900);
+alter entity AWSBedrockImplementation.Embedding_types set position (1150, 2900);
+alter entity AWSBedrockImplementation.CohereRequest set position (1600, 2900);
+alter entity AWSBedrockImplementation.Texts set position (2050, 2800);
+alter entity AWSBedrockImplementation.Text set position (2500, 2800);
+alter entity AWSBedrockImplementation.CohereResponse set position (2500, 3400);
+alter entity AWSBedrockImplementation.Embeddings set position (2050, 3400);
+alter entity AWSBedrockImplementation.Embedding set position (1600, 3400);
+
+-- Titan payloads
+alter entity AWSBedrockImplementation.TitanEmbeddingsV2Request set position (1600, 3850);
+alter entity AWSBedrockImplementation.EmbeddingTypes set position (1150, 3850);
+alter entity AWSBedrockImplementation.EmbeddingType set position (700, 3850);
+
+-- Association lines
+alter association AWSBedrockImplementation.Config_ChatModel set anchor from (0, 25) to (100, 30);
+alter association AWSBedrockImplementation.Config_EmbeddingModel set anchor from (0, 55) to (100, 70);
+alter association AWSBedrockImplementation.TrySession_BedrockModel set anchor from (50, 0) to (50, 100);
+alter association AWSBedrockImplementation.TicketChunk_Ticket set anchor from (50, 0) to (50, 100);
+alter association AWSBedrockImplementation.TicketChunk_PageHelper set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.AskSession_AskEntry set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.AskEntry_AskSource set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.Messages_AnthropicRequest set anchor from (0, 50) to (100, 20);
+alter association AWSBedrockImplementation.Message_Messages set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.Thinking_AnthropicRequest set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.Output_config_AnthropicRequest set anchor from (0, 50) to (100, 80);
+alter association AWSBedrockImplementation.Content_AnthropicResponse set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.ContentItem_Content set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.Usage_AnthropicResponse set anchor from (0, 50) to (100, 80);
+alter association AWSBedrockImplementation.Embedding_type_Embedding_types set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.Embedding_types_CohereRequest set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.Texts_CohereRequest set anchor from (0, 50) to (100, 25);
+alter association AWSBedrockImplementation.Text_Texts set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.Text_CohereResponse set anchor from (50, 100) to (50, 0);
+alter association AWSBedrockImplementation.Embeddings_CohereResponse set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.Embedding_Embeddings set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.EmbeddingType_EmbeddingTypes set anchor from (100, 50) to (0, 50);
+alter association AWSBedrockImplementation.EmbeddingTypes_TitanEmbeddingsV2Request set anchor from (100, 50) to (0, 50);

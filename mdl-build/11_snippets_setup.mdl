@@ -1,0 +1,256 @@
+mdl 1;
+
+-- ============================================================================
+-- SNIP_SetupStatus: the checklist above the tabs. Reads the flags that
+-- SUB_Config_RefreshStatus stores on the Config.
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_SetupStatus folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  layoutgrid lgStatus {
+    row {
+      column (DesktopWidth: AutoFill) {
+        dataview dvStatus (DataSource: $Config) {
+          container ctnStatus (Class: 'bedrock-card') {
+            container ctnStatusHeader (Class: 'bedrock-card-header') {
+              container ctnStatusTitle {
+                dynamictext txtStatusTitle (Content: 'Setup status', RenderMode: H3, Class: 'bedrock-card-title')
+                dynamictext txtStatusReady (Content: 'Everything is ready. The demo tabs will work.', Visible: $Config/ReadyCount = 7, Class: 'bedrock-card-subtitle')
+                dynamictext txtStatusTodo (Content: 'Finish the open items to get the demo working.', Visible: $Config/ReadyCount < 7, Class: 'bedrock-card-subtitle')
+              }
+              container ctnProgress (Class: 'bedrock-progress') {
+                progressbar pbReady (type: 'expression', expressionCurrentValue: '$Config/ReadyCount', expressionMinValue: '0', expressionMaxValue: '7')
+                dynamictext txtProgress (Content: '{1} of 7', ContentParams: ({1} = toString($Config/ReadyCount)), Class: 'bedrock-progress-count')
+              }
+            }
+            container ctnStatusItems (Class: 'bedrock-status-grid') {
+              container itemAws (Class: 'bedrock-status-item') {
+                dynamictext awsOk (Content: '✓', Visible: $Config/AwsTestOk, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext awsTodo (Content: '!', Visible: not($Config/AwsTestOk), Class: 'bedrock-status-icon bedrock-status-todo')
+                container awsText (Class: 'bedrock-status-text') {
+                  dynamictext awsLabel (Content: 'AWS connection', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext awsDetail (Content: '{1}', ContentParams: ({1} = if $Config/AwsTestOk then 'Tested ' + formatDateTime($Config/AwsTestedAt, 'dd MMM HH:mm') + ' · ' + $Config/BedrockRegion else 'Not tested. Use Test connection.'), Class: 'bedrock-status-detail')
+                }
+              }
+              container itemEnc (Class: 'bedrock-status-item') {
+                dynamictext encOk (Content: '✓', Visible: $Config/IsEncryptionReady, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext encTodo (Content: '!', Visible: not($Config/IsEncryptionReady), Class: 'bedrock-status-icon bedrock-status-todo')
+                container encText (Class: 'bedrock-status-text') {
+                  dynamictext encLabel (Content: 'Encryption key', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext encDetail (Content: '{1}', ContentParams: ({1} = if $Config/IsEncryptionReady then 'Environment constant is set' else 'Set the Encryption key constant.'), Class: 'bedrock-status-detail')
+                }
+              }
+              container itemDb (Class: 'bedrock-status-item') {
+                dynamictext dbOk (Content: '✓', Visible: $Config/IsDatabaseReady, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext dbTodo (Content: '!', Visible: not($Config/IsDatabaseReady), Class: 'bedrock-status-icon bedrock-status-todo')
+                container dbText (Class: 'bedrock-status-text') {
+                  dynamictext dbLabel (Content: 'Vector database', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext dbDetail (Content: '{1}', ContentParams: ({1} = if $Config/IsDatabaseReady then $Config/DatabaseName else if $Config/DatabaseName = '' then 'No database selected.' else 'Not tested yet. Use Test.'), Class: 'bedrock-status-detail')
+                }
+              }
+              container itemChat (Class: 'bedrock-status-item') {
+                dynamictext chatOk (Content: '✓', Visible: $Config/IsChatReady, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext chatTodo (Content: '!', Visible: not($Config/IsChatReady), Class: 'bedrock-status-icon bedrock-status-todo')
+                container chatText (Class: 'bedrock-status-text') {
+                  dynamictext chatLabel (Content: 'Chat model', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext chatDetail (Content: '{1}', ContentParams: ({1} = if $Config/IsChatReady then $Config/ChatModelName else 'Pick a chat model.'), Class: 'bedrock-status-detail')
+                }
+              }
+              container itemEmb (Class: 'bedrock-status-item') {
+                dynamictext embOk (Content: '✓', Visible: $Config/IsEmbeddingReady, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext embTodo (Content: '!', Visible: not($Config/IsEmbeddingReady), Class: 'bedrock-status-icon bedrock-status-todo')
+                container embText (Class: 'bedrock-status-text') {
+                  dynamictext embLabel (Content: 'Embedding model', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext embDetail (Content: '{1}', ContentParams: ({1} = if $Config/IsEmbeddingReady then $Config/EmbeddingModelName + ' · ' + toString($Config/EmbeddingDimension) + ' dimensions' else 'Pick an embedding model.'), Class: 'bedrock-status-detail')
+                }
+              }
+              container itemTickets (Class: 'bedrock-status-item') {
+                dynamictext ticketsOk (Content: '✓', Visible: $Config/IsTicketsReady, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext ticketsTodo (Content: '!', Visible: not($Config/IsTicketsReady), Class: 'bedrock-status-icon bedrock-status-todo')
+                container ticketsText (Class: 'bedrock-status-text') {
+                  dynamictext ticketsLabel (Content: 'Tickets', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext ticketsDetail (Content: '{1}', ContentParams: ({1} = if $Config/IsTicketsReady then toString($Config/TicketCount) + (if $Config/TicketCount = 1 then ' ticket' else ' tickets') + ' loaded' else 'No tickets. Load samples or add some.'), Class: 'bedrock-status-detail')
+                }
+              }
+              container itemKb (Class: 'bedrock-status-item') {
+                dynamictext kbOk (Content: '✓', Visible: $Config/IsKnowledgeBaseReady, Class: 'bedrock-status-icon bedrock-status-ok')
+                dynamictext kbTodo (Content: '!', Visible: not($Config/IsKnowledgeBaseReady), Class: 'bedrock-status-icon bedrock-status-todo')
+                container kbText (Class: 'bedrock-status-text') {
+                  dynamictext kbLabel (Content: 'Knowledge base', RenderMode: H5, Class: 'bedrock-status-label')
+                  dynamictext kbDetail (Content: '{1}', ContentParams: ({1} = if $Config/IsKnowledgeBaseReady then toString($Config/ChunkCount) + (if $Config/ChunkCount = 1 then ' chunk' else ' chunks') + ' stored' else if $Config/ChunkCount = 0 then 'Not built yet.' else if $Config/ChunksModelId != $Config/EmbeddingModelKey then 'Built with another model. Rebuild.' else toString($Config/StaleTicketCount) + (if $Config/StaleTicketCount = 1 then ' ticket' else ' tickets') + ' changed since it was built. Rebuild.'), Class: 'bedrock-status-detail')
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- SNIP_Connections: AWS Bedrock settings and the pgvector databases.
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_Connections folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  layoutgrid lgConnections {
+    row {
+      column (DesktopWidth: AutoFill) {
+        dataview dvAws (DataSource: $Config, FormOrientation: Vertical) {
+          container ctnAws (Class: 'bedrock-card') {
+            container ctnAwsHeader (Class: 'bedrock-card-header') {
+              container ctnAwsTitle {
+                dynamictext txtAwsTitle (Content: 'AWS Bedrock', RenderMode: H3, Class: 'bedrock-card-title')
+                dynamictext txtAwsSubtitle (Content: 'Region and guardrail are saved in the app. Credentials come from the environment.', Class: 'bedrock-card-subtitle')
+              }
+              container ctnAwsActions (Class: 'bedrock-actions') {
+                actionbutton btnAwsTest (Caption: 'Test connection', Action: call microflow AWSBedrockImplementation.ACT_Connection_Test with (ProgressBar: Blocking, ProgressMessage: 'Testing the connection to AWS…'))
+                actionbutton btnAwsSave (Caption: 'Save', Action: call microflow AWSBedrockImplementation.ACT_Config_Save, ButtonStyle: Success)
+              }
+            }
+            container ctnAwsBody (Class: 'bedrock-card-body') {
+              container ctnCredentials (Class: 'bedrock-note') {
+                dynamictext txtCredentials (Content: 'Credentials are set by the platform (web identity token, role and token file) and cannot be edited here. Use Test connection to see which identity is used.')
+              }
+              layoutgrid lgAwsFields {
+                row {
+                  column (DesktopWidth: 4, TabletWidth: 12, PhoneWidth: 12) {
+                    textbox txtRegion (Label: 'Bedrock region', Attribute: BedrockRegion)
+                  }
+                  column (DesktopWidth: 4, TabletWidth: 12, PhoneWidth: 12) {
+                    textbox txtGuardrailId (Label: 'Guardrail identifier', Attribute: BedrockGuardrailIdentifier)
+                  }
+                  column (DesktopWidth: 4, TabletWidth: 12, PhoneWidth: 12) {
+                    textbox txtGuardrailVersion (Label: 'Guardrail version', Attribute: BedrockGuardrailVersion)
+                  }
+                }
+              }
+              container ctnAwsResult (Visible: $Config/AwsTestResult != empty, Class: 'bedrock-note', DynamicClasses: if $Config/AwsTestOk then 'bedrock-note-good' else 'bedrock-note-bad') {
+                dynamictext txtAwsResultTitle (Content: '{1}', ContentParams: ({1} = if $Config/AwsTestOk then 'Connection works' else 'Connection failed'), RenderMode: H5)
+                markdown mdAwsResult (stringAttribute: AwsTestResult)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  layoutgrid lgDatabases {
+    row {
+      column (DesktopWidth: AutoFill) {
+        container ctnDb (Class: 'bedrock-card') {
+          container ctnDbHeader (Class: 'bedrock-card-header') {
+            container ctnDbTitle {
+              dynamictext txtDbTitle (Content: 'Vector database', RenderMode: H3, Class: 'bedrock-card-title')
+              dynamictext txtDbSubtitle (Content: 'PostgreSQL with the pgvector extension. The password is stored encrypted.', Class: 'bedrock-card-subtitle')
+            }
+            actionbutton btnDbNew (Caption: 'New database', Action: call microflow PgVectorKnowledgeBase.ACT_DatabaseConfiguration_New, ButtonStyle: Primary)
+          }
+          dataview dvDbPicker (DataSource: $Config, FormOrientation: Vertical) {
+            container ctnDbPicker (Class: 'bedrock-card-body') {
+              combobox cmbDatabase (Label: 'Database used for the ticket knowledge base', Attribute: Config_DatabaseConfiguration, DataSource: database from PgVectorKnowledgeBase.DatabaseConfiguration sort by DisplayName asc, CaptionAttribute: DisplayName, OnChange: call microflow AWSBedrockImplementation.ACT_Config_DatabaseChanged)
+            }
+          }
+          datagrid dgDatabases (columnsHidable: false, DataSource: database from PgVectorKnowledgeBase.DatabaseConfiguration sort by DisplayName asc, onClick: call microflow PgVectorKnowledgeBase.ACT_DatabaseConfiguration_Edit(DatabaseConfiguration = $currentObject)) {
+            column (ShowContentAs: customContent, Caption: 'Name', Sortable: false) {
+              dynamictext dbName (Content: '{1}', ContentParams: ({1} = $currentObject/DisplayName), RenderMode: H5, Class: 'bedrock-cell-title')
+              dynamictext dbUsed (Content: 'Used for tickets', Visible: $currentObject/DisplayName = $Config/DatabaseName, Class: 'bedrock-badge')
+            }
+            column (Attribute: JdbcURL, Caption: 'JDBC URL')
+            column (Attribute: Username, Caption: 'User')
+            column (ShowContentAs: customContent, Caption: 'Password', Sortable: false) {
+              dynamictext dbPassword (Content: '••••••••', Class: 'bedrock-mono')
+            }
+            column (ShowContentAs: customContent, Caption: 'Status', Sortable: false) {
+              dynamictext dbConnected (Content: 'Connected', Visible: $currentObject/DisplayName = $Config/DatabaseName and $Config/PgTestOk, Class: 'bedrock-badge bedrock-badge-ok')
+              dynamictext dbNotTested (Content: 'Not tested', Visible: $currentObject/DisplayName = $Config/DatabaseName and not($Config/PgTestOk), Class: 'bedrock-badge bedrock-badge-warn')
+              dynamictext dbNotSelected (Content: 'Not selected', Visible: $currentObject/DisplayName != $Config/DatabaseName, Class: 'bedrock-muted')
+            }
+            column (ShowContentAs: customContent, Caption: '', Sortable: false, Resizable: false, ColumnWidth: autoFit) {
+              container ctnDbRowActions (Class: 'bedrock-actions') {
+                actionbutton btnDbTest (Caption: 'Test', Action: call microflow AWSBedrockImplementation.ACT_PgDatabase_Test with (ProgressBar: Blocking, ProgressMessage: 'Connecting to the database…'), DesignProperties: ('Size': 'Small'))
+                actionbutton btnDbDelete (Caption: 'Delete', Action: call microflow PgVectorKnowledgeBase.ACT_DatabaseConfiguration_Delete with (Confirmation: 'Delete this database configuration? The data in the database itself is not touched.', ProceedCaption: 'Delete', CancelCaption: 'Cancel'), ButtonStyle: Danger, DesignProperties: ('Size': 'Small'))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- SNIP_Models: the models in use and the list of configured models.
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_Models folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  layoutgrid lgModelsInUse {
+    row {
+      column (DesktopWidth: AutoFill) {
+        dataview dvModelsInUse (DataSource: $Config, FormOrientation: Vertical) {
+          container ctnModelsInUse (Class: 'bedrock-card') {
+            container ctnModelsInUseHeader (Class: 'bedrock-card-header') {
+              container ctnModelsInUseTitle {
+                dynamictext txtModelsInUseTitle (Content: 'Models in use', RenderMode: H3, Class: 'bedrock-card-title')
+                dynamictext txtModelsInUseSubtitle (Content: 'These two models are used by the Tickets, Search and ask and Ask tickets tabs.', Class: 'bedrock-card-subtitle')
+              }
+            }
+            container ctnModelsInUseBody (Class: 'bedrock-card-body') {
+              layoutgrid lgPickers {
+                row {
+                  column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                    combobox cmbChatModel (Label: 'Chat model', Attribute: Config_ChatModel, DataSource: database from AWSBedrockImplementation.BedrockModel where [Family = 'Claude'] sort by Name asc, CaptionAttribute: Name, OnChange: call microflow AWSBedrockImplementation.ACT_Config_Commit)
+                    dynamictext txtChatModelId (Content: '{1}', ContentParams: ({1} = $Config/ChatModelKey), Class: 'bedrock-hint bedrock-mono')
+                  }
+                  column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                    combobox cmbEmbeddingModel (Label: 'Embedding model', Attribute: Config_EmbeddingModel, DataSource: database from AWSBedrockImplementation.BedrockModel where [Family = 'Cohere'] sort by Name asc, CaptionAttribute: Name, OnChange: call microflow AWSBedrockImplementation.ACT_Config_Commit)
+                    dynamictext txtEmbeddingModelId (Content: '{1}', ContentParams: ({1} = $Config/EmbeddingModelKey + ' · ' + toString($Config/EmbeddingDimension) + ' dimensions'), Class: 'bedrock-hint bedrock-mono')
+                  }
+                }
+              }
+              container ctnModelStale (Visible: $Config/ChunkCount > 0 and $Config/ChunksModelId != $Config/EmbeddingModelKey, Class: 'bedrock-note bedrock-note-warn') {
+                dynamictext txtModelStale (Content: 'The knowledge base was built with another embedding model. Rebuild the chunks on the Tickets tab, otherwise search results will be poor.')
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  layoutgrid lgModels {
+    row {
+      column (DesktopWidth: AutoFill) {
+        container ctnModels (Class: 'bedrock-card') {
+          container ctnModelsHeader (Class: 'bedrock-card-header') {
+            container ctnModelsTitle {
+              dynamictext txtModelsTitle (Content: 'Models', RenderMode: H3, Class: 'bedrock-card-title')
+              dynamictext txtModelsSubtitle (Content: 'Add the Bedrock models you want to use. The family decides how the request is built.', Class: 'bedrock-card-subtitle')
+            }
+            container ctnModelsActions (Class: 'bedrock-actions') {
+              actionbutton btnListModels (Caption: 'List models in AWS', Action: call microflow AWSBedrockImplementation.ACT_ListFoundationModels with (ProgressBar: Blocking, ProgressMessage: 'Calling Bedrock…'))
+              actionbutton btnAddModel (Caption: 'Add model', Action: call microflow AWSBedrockImplementation.ACT_BedrockModel_New, ButtonStyle: Primary)
+            }
+          }
+          datagrid dgModels (columnsHidable: false, DataSource: database from AWSBedrockImplementation.BedrockModel sort by Name asc, onClick: call microflow AWSBedrockImplementation.ACT_BedrockModel_Edit(BedrockModel = $currentObject)) {
+            column (ShowContentAs: customContent, Caption: 'Name', Sortable: false) {
+              dynamictext modelName (Content: '{1}', ContentParams: ({1} = $currentObject/Name), RenderMode: H5, Class: 'bedrock-cell-title')
+              dynamictext modelId (Content: '{1}', ContentParams: ({1} = $currentObject/ModelId), Class: 'bedrock-hint bedrock-mono')
+            }
+            column (ShowContentAs: customContent, Caption: 'Family', Sortable: false) {
+              dynamictext familyLabel (Content: '{1}', ContentParams: ({1} = if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'Claude' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then 'Cohere' else 'Titan'), Class: 'label', DynamicClasses: if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'label-primary' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then 'label-success' else 'label-warning')
+            }
+            column (ShowContentAs: customContent, Caption: 'Settings', Sortable: false) {
+              dynamictext modelSettings (Content: '{1}', ContentParams: ({1} = if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'max ' + toString($currentObject/MaxTokens) + ' tokens · effort ' + getKey($currentObject/Effort) else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then toString($currentObject/Dimension) + ' dims · ' + getKey($currentObject/InputType) else toString($currentObject/Dimension) + ' dims · ' + (if $currentObject/Normalize then 'normalized' else 'raw')), Class: 'bedrock-mono')
+            }
+            column (ShowContentAs: customContent, Caption: 'In use', Sortable: false) {
+              dynamictext inUseChat (Content: 'Chat', Visible: $currentObject/ModelId = $Config/ChatModelKey, Class: 'bedrock-badge')
+              dynamictext inUseEmbeddings (Content: 'Embeddings', Visible: $currentObject/ModelId = $Config/EmbeddingModelKey, Class: 'bedrock-badge bedrock-badge-ok')
+            }
+            column (ShowContentAs: customContent, Caption: '', Sortable: false, Resizable: false, ColumnWidth: autoFit) {
+              container ctnModelRowActions (Class: 'bedrock-actions') {
+                actionbutton btnTryModel (Caption: 'Try', Action: call microflow AWSBedrockImplementation.ACT_BedrockModel_Try, DesignProperties: ('Size': 'Small'))
+                actionbutton btnDeleteModel (Caption: 'Delete', Action: call microflow AWSBedrockImplementation.ACT_BedrockModel_Delete with (Confirmation: 'Delete this model?', ProceedCaption: 'Delete', CancelCaption: 'Cancel'), ButtonStyle: Danger, DesignProperties: ('Size': 'Small'))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};

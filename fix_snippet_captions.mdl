@@ -1,0 +1,8 @@
+mdl 1;
+ALTER SNIPPET AWSBedrockImplementation.SNIP_Overview {
+  SET (Caption: 'Config') ON tabPage1;
+  SET (Caption: 'Anthropic') ON tabPage3;
+  SET (Caption: 'Amazon Titan') ON tabPage2;
+  SET (Caption: 'Cohere') ON tabPage5;
+  SET (Caption: 'Ticket List') ON tabPage4;
+};

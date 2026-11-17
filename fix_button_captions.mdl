@@ -1,0 +1,10 @@
+mdl 1;
+ALTER SNIPPET AWSBedrockImplementation.SNIP_Overview {
+  SET (Caption: 'Create chunks and store in knowledge base') ON actionButton10;
+  SET (Caption: 'Populate Ticket list') ON actionButton13;
+  SET (Caption: 'Save') ON actionButton1;
+  SET (Caption: 'Save') ON actionButton5;
+  SET (Caption: 'Cancel') ON actionButton6;
+  SET (Caption: 'Send Request') ON actionButton2;
+  SET (Caption: 'Send Request') ON actionButton9;
+};

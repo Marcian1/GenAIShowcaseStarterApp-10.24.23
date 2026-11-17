@@ -1,0 +1,327 @@
+mdl 1;
+
+-- ============================================================================
+-- SNIP_Tickets: the knowledge base status, the ticket master data and the stored chunks.
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_Tickets folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  layoutgrid lgKnowledgeBase {
+    row {
+      column (DesktopWidth: AutoFill) {
+        dataview dvKnowledgeBase (DataSource: $Config, FormOrientation: Vertical) {
+          container ctnKnowledgeBase (Class: 'bedrock-card') {
+            container ctnKbHeader (Class: 'bedrock-card-header') {
+              container ctnKbTitle {
+                dynamictext txtKbTitle (Content: 'Ticket knowledge base', RenderMode: H3, Class: 'bedrock-card-title')
+                dynamictext txtKbSubtitle (Content: 'Split the tickets into chunks and embed them into the pgvector knowledge base.', Class: 'bedrock-card-subtitle')
+              }
+              container ctnKbActions (Class: 'bedrock-actions') {
+                actionbutton btnKbCreate (Caption: 'Create chunks and store in knowledge base', Visible: $Config/ChunkCount = 0, Action: call microflow AWSBedrockImplementation.ACT_Chunks_Rebuild with (ProgressBar: Blocking, ProgressMessage: 'Creating chunks and embedding the tickets…'), ButtonStyle: Primary)
+                actionbutton btnKbRebuild (Caption: 'Rebuild chunks and store in knowledge base', Visible: $Config/ChunkCount > 0, Action: call microflow AWSBedrockImplementation.ACT_Chunks_Rebuild with (ProgressBar: Blocking, ProgressMessage: 'Rebuilding chunks and embedding the tickets…'), ButtonStyle: Primary)
+              }
+            }
+            container ctnKbBody (Class: 'bedrock-card-body') {
+              container ctnKbChips (Class: 'bedrock-chips') {
+                dynamictext txtKbEmbeddingLabel (Content: 'Embedding model', Class: 'bedrock-label')
+                dynamictext txtKbEmbedding (Content: '{1} · {2} dims', ContentParams: ({1} = $Config/EmbeddingModelName, {2} = toString($Config/EmbeddingDimension)), Class: 'bedrock-badge bedrock-badge-ok')
+                dynamictext txtKbDatabaseLabel (Content: 'Database', Class: 'bedrock-label')
+                dynamictext txtKbDatabase (Content: '{1}', ContentParams: ({1} = if $Config/DatabaseName = '' then 'none selected' else $Config/DatabaseName), Class: 'bedrock-badge', DynamicClasses: if $Config/IsDatabaseReady then 'bedrock-badge-ok' else 'bedrock-badge-warn')
+                dynamictext txtKbHint (Content: 'Change them on the Connections and Models tabs.', Class: 'bedrock-hint')
+              }
+              container ctnKbNoDatabase (Visible: $Config/DatabaseName = '', Class: 'bedrock-note bedrock-note-bad') {
+                dynamictext txtKbNoDatabase (Content: 'No vector database selected. Add one on the Connections tab.')
+              }
+              container ctnKbEmpty (Visible: $Config/DatabaseName != '' and $Config/ChunkCount = 0, Class: 'bedrock-note') {
+                dynamictext txtKbEmpty (Content: 'No chunks yet. Create chunks to enable search.')
+              }
+              container ctnKbModelStale (Visible: $Config/DatabaseName != '' and $Config/ChunkCount > 0 and $Config/ChunksModelId != $Config/EmbeddingModelKey, Class: 'bedrock-note bedrock-note-warn') {
+                dynamictext txtKbModelStale (Content: 'The chunks were created with another embedding model. Rebuild so that search uses {1}.', ContentParams: ({1} = $Config/EmbeddingModelName))
+              }
+              container ctnKbTicketsChanged (Visible: $Config/DatabaseName != '' and $Config/ChunkCount > 0 and $Config/ChunksModelId = $Config/EmbeddingModelKey and $Config/StaleTicketCount > 0, Class: 'bedrock-note bedrock-note-warn') {
+                dynamictext txtKbTicketsChanged (Content: '{1} changed since the knowledge base was built. Rebuild to include the changes.', ContentParams: ({1} = toString($Config/StaleTicketCount) + (if $Config/StaleTicketCount = 1 then ' ticket' else ' tickets')))
+              }
+              container ctnKbReady (Visible: $Config/DatabaseName != '' and $Config/IsKnowledgeBaseReady, Class: 'bedrock-note bedrock-note-good') {
+                dynamictext txtKbReady (Content: '{1} stored in {2} with {3}. Search and ask is ready.', ContentParams: ({1} = toString($Config/ChunkCount) + (if $Config/ChunkCount = 1 then ' chunk' else ' chunks'), {2} = $Config/DatabaseName, {3} = $Config/EmbeddingModelName))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  layoutgrid lgTickets {
+    row {
+      column (DesktopWidth: AutoFill) {
+        container ctnTickets (Class: 'bedrock-card') {
+          container ctnTicketsHeader (Class: 'bedrock-card-header') {
+            container ctnTicketsTitle {
+              dynamictext txtTicketsTitle (Content: 'Tickets', RenderMode: H3, Class: 'bedrock-card-title')
+              dynamictext txtTicketsSubtitle (Content: 'The master data the demo searches. Edit the tickets or load the sample set.', Class: 'bedrock-card-subtitle')
+            }
+            container ctnTicketsActions (Class: 'bedrock-actions') {
+              actionbutton btnLoadSamples (Caption: 'Load sample tickets', Action: call microflow AWSBedrockImplementation.ACT_Tickets_LoadSamples with (ProgressBar: Blocking, ProgressMessage: 'Loading the sample tickets…', Confirmation: 'This replaces all current tickets with the sample tickets.', ProceedCaption: 'Replace tickets', CancelCaption: 'Cancel'))
+              actionbutton btnAddTicket (Caption: 'Add ticket', Action: call microflow AWSBedrockImplementation.ACT_Ticket_New, ButtonStyle: Primary)
+            }
+          }
+          datagrid dgTickets (columnsHidable: false, DataSource: database from AWSBedrockImplementation.Ticket sort by TicketId asc, onClick: call microflow AWSBedrockImplementation.ACT_Ticket_Edit(Ticket = $currentObject)) {
+            column (Attribute: TicketId, Caption: 'Id', Alignment: right, ColumnWidth: autoFit) {
+              numberfilter nfTicketId (FilterType: equal)
+            }
+            column (Attribute: Subject, ShowContentAs: customContent, Caption: 'Subject') {
+              textfilter tfSubject
+              dynamictext ticketSubject (Content: '{1}', ContentParams: ({1} = $currentObject/Subject), RenderMode: H5, Class: 'bedrock-cell-title')
+              dynamictext ticketDescription (Content: '{1}', ContentParams: ({1} = if length($currentObject/Description) > 110 then substring($currentObject/Description, 0, 107) + '...' else $currentObject/Description), Class: 'bedrock-hint')
+            }
+            column (Attribute: Category, Caption: 'Category') {
+              dropdownfilter ddCategory
+            }
+            column (Attribute: Status, ShowContentAs: customContent, Caption: 'Status') {
+              dropdownfilter ddStatus
+              dynamictext ticketStatus (Content: '{1}', ContentParams: ({1} = getCaption($currentObject/Status)), Class: 'label', DynamicClasses: if $currentObject/Status = AWSBedrockImplementation.ENUM_Ticket_Status.Open then 'label-warning' else if $currentObject/Status = AWSBedrockImplementation.ENUM_Ticket_Status.Closed then 'label-success' else 'label-primary')
+            }
+            column (Attribute: ChangedDateTime, Caption: 'Changed') {
+              datefilter dfChanged (FilterType: equal)
+            }
+            column (ShowContentAs: customContent, Caption: '', Sortable: false, Resizable: false, ColumnWidth: autoFit) {
+              actionbutton btnDeleteTicket (Caption: 'Delete', Action: call microflow AWSBedrockImplementation.ACT_Ticket_Delete with (Confirmation: 'Delete this ticket?', ProceedCaption: 'Delete', CancelCaption: 'Cancel'), ButtonStyle: Danger, DesignProperties: ('Size': 'Small'))
+            }
+          }
+        }
+      }
+    }
+  }
+  layoutgrid lgChunks {
+    row {
+      column (DesktopWidth: AutoFill) {
+        accordion accChunks (collapsible: true, expandBehavior: 'multipleExpanded') {
+          group grpChunks (headerRenderMode: 'text', headerText: 'Stored chunks', initialCollapsedState: 'collapsed', loadContent: 'whenExpanded') {
+            datagrid dgChunks (DataSource: microflow AWSBedrockImplementation.DS_TicketChunkList) {
+              column (Attribute: HumanReadableID, Caption: 'Human readable ID')
+              column (Attribute: InputText, Caption: 'Input text')
+              column (Attribute: EmbeddingVector, Caption: 'Embedding vector', Hidable: hidden)
+              column (Attribute: ChunkID, Caption: 'Chunk ID', Hidable: hidden)
+              column (Attribute: _Index, Caption: 'Index', Hidable: hidden, Alignment: right)
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- SNIP_SearchAndAsk: the original two-step flow, now using the models and database from the Config.
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_SearchAndAsk folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  layoutgrid lgSearchAndAsk {
+    row {
+      column (DesktopWidth: AutoFill) {
+        container ctnSearchUsing (Class: 'bedrock-chips') {
+          dynamictext txtSearchUsing (Content: 'Using', Class: 'bedrock-label')
+          dynamictext txtSearchChat (Content: '{1}', ContentParams: ({1} = $Config/ChatModelName), Class: 'bedrock-badge')
+          dynamictext txtSearchEmbedding (Content: '{1}', ContentParams: ({1} = $Config/EmbeddingModelName), Class: 'bedrock-badge bedrock-badge-ok')
+          dynamictext txtSearchDatabase (Content: '{1}', ContentParams: ({1} = if $Config/DatabaseName = '' then 'no database' else $Config/DatabaseName), Class: 'bedrock-badge', DynamicClasses: if $Config/IsDatabaseReady then 'bedrock-badge-ok' else 'bedrock-badge-warn')
+        }
+        container ctnSearchEmpty (Visible: $Config/ChunkCount = 0, Class: 'bedrock-note bedrock-note-warn') {
+          dynamictext txtSearchEmpty (Content: 'The knowledge base is empty. Create chunks on the Tickets tab first.')
+        }
+        container ctnSearchStale (Visible: $Config/ChunkCount > 0 and $Config/ChunksModelId != $Config/EmbeddingModelKey, Class: 'bedrock-note bedrock-note-warn') {
+          dynamictext txtSearchStale (Content: 'The chunks were created with another embedding model. Results will be poor until you rebuild them.')
+        }
+        dataview dvPageHelper (DataSource: microflow AWSBedrockImplementation.DS_PageHelper, FormOrientation: Vertical) {
+          container ctnSearch (Class: 'bedrock-card') {
+            container ctnSearchHeader (Class: 'bedrock-card-header') {
+              container ctnSearchTitle (Class: 'bedrock-step') {
+                dynamictext txtSearchStep (Content: '1', Class: 'bedrock-step-number')
+                container ctnSearchStepText {
+                  dynamictext txtSearchTitle (Content: 'Find similar tickets', RenderMode: H3, Class: 'bedrock-card-title')
+                  dynamictext txtSearchSubtitle (Content: 'Semantic search in the pgvector knowledge base.', Class: 'bedrock-card-subtitle')
+                }
+              }
+            }
+            container ctnSearchBody (Class: 'bedrock-card-body') {
+              textarea taSearchItem (Label: 'Search item', Attribute: SearchItem)
+              layoutgrid lgSearchOptions {
+                row {
+                  column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                    textbox txtMaxResults (Label: 'Max results', Attribute: MaxResults)
+                  }
+                  column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                    slider sldSimilarity (Label: 'Minimum similarity', valueAttribute: MinimumSimilarity, staticMinimumValue: 0, staticMaximumValue: 1, stepValue: 0.05, decimalPlaces: 2, noOfMarkers: 0)
+                  }
+                }
+              }
+              actionbutton btnSearch (Caption: 'Search', Action: call microflow AWSBedrockImplementation.ACT_Pagehelper_Send_SearchItem with (ProgressBar: Blocking, ProgressMessage: 'Searching knowledge base...'), ButtonStyle: Primary)
+              datagrid dgSearchResults (DataSource: $currentObject/AWSBedrockImplementation.TicketChunk_PageHelper) {
+                column (Attribute: HumanReadableID, Caption: 'Ticket')
+                column (Attribute: InputText, Caption: 'Input text')
+                column (Attribute: Similarity, ShowContentAs: customContent, Caption: 'Similarity', Alignment: right) {
+                  progressbar pbSearchSimilarity (type: 'expression', expressionCurrentValue: '$currentObject/Similarity * 100', expressionMinValue: '0', expressionMaxValue: '100')
+                  dynamictext txtSearchSimilarity (Content: '{1}', ContentParams: ({1} = toString(round($currentObject/Similarity, 2))), Class: 'bedrock-mono')
+                }
+              }
+            }
+          }
+          container ctnAsk (Class: 'bedrock-card') {
+            container ctnAskHeader (Class: 'bedrock-card-header') {
+              container ctnAskTitle (Class: 'bedrock-step') {
+                dynamictext txtAskStep (Content: '2', Class: 'bedrock-step-number')
+                container ctnAskStepText {
+                  dynamictext txtAskTitle (Content: 'Ask the chat model', RenderMode: H3, Class: 'bedrock-card-title')
+                  dynamictext txtAskSubtitle (Content: 'The tickets found above are sent as context with your prompt.', Class: 'bedrock-card-subtitle')
+                }
+              }
+            }
+            container ctnAskBody (Class: 'bedrock-card-body') {
+              textarea taSystemRequest (Label: 'System request', Attribute: SystemPrompt)
+              textarea taPromptRequest (Label: 'Prompt request', Attribute: UserPrompt)
+              accordion accTicketData (collapsible: true, expandBehavior: 'multipleExpanded') {
+                group grpTicketData (headerRenderMode: 'text', headerText: 'Ticket data sent as context', initialCollapsedState: 'collapsed') {
+                  textarea taTicketData (Label: 'Ticket data', Attribute: TicketData)
+                }
+              }
+              actionbutton btnSendPrompt (Caption: 'Send prompt request', Action: call microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send with (ProgressBar: Blocking, ProgressMessage: 'Sending the request to the chat model…'), ButtonStyle: Primary)
+              container ctnPromptResponse (Visible: $currentObject/PromptResponse != empty, Class: 'bedrock-response') {
+                dynamictext txtPromptResponseLabel (Content: 'Prompt response', RenderMode: H5)
+                markdown mdPromptResponse (stringAttribute: PromptResponse)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- SNIP_AskTickets: ask one question; search and answer happen in one click (ACT_Ask).
+-- ============================================================================
+create snippet AWSBedrockImplementation.SNIP_AskTickets folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  layoutgrid lgAsk {
+    row {
+      column (DesktopWidth: AutoFill) {
+        container ctnAskTickets (Class: 'bedrock-ask') {
+          container ctnAskUsing (Class: 'bedrock-chips') {
+            dynamictext txtAskChat (Content: '{1}', ContentParams: ({1} = $Config/ChatModelName), Class: 'bedrock-badge')
+            dynamictext txtAskEmbedding (Content: '{1}', ContentParams: ({1} = $Config/EmbeddingModelName), Class: 'bedrock-badge bedrock-badge-ok')
+            dynamictext txtAskDatabase (Content: '{1}', ContentParams: ({1} = if $Config/DatabaseName = '' then 'no database' else $Config/DatabaseName), Class: 'bedrock-badge', DynamicClasses: if $Config/IsDatabaseReady then 'bedrock-badge-ok' else 'bedrock-badge-warn')
+            dynamictext txtAskIndexed (Content: '{1} indexed', ContentParams: ({1} = toString($Config/ChunkCount) + (if $Config/ChunkCount = 1 then ' ticket' else ' tickets')), Class: 'bedrock-hint')
+          }
+          container ctnAskNoDatabase (Visible: $Config/DatabaseName = '', Class: 'bedrock-note bedrock-note-bad') {
+            dynamictext txtAskNoDatabase (Content: 'No vector database selected. Add one on the Connections tab.')
+          }
+          container ctnAskEmpty (Visible: $Config/DatabaseName != '' and $Config/ChunkCount = 0, Class: 'bedrock-note bedrock-note-warn') {
+            dynamictext txtAskEmpty (Content: 'The knowledge base is empty. Index the tickets before you ask questions.', Class: 'bedrock-grow')
+            actionbutton btnAskCreate (Caption: 'Create chunks', Action: call microflow AWSBedrockImplementation.ACT_Chunks_Rebuild with (ProgressBar: Blocking, ProgressMessage: 'Creating chunks and embedding the tickets…'), ButtonStyle: Primary, DesignProperties: ('Size': 'Small'))
+          }
+          container ctnAskModelStale (Visible: $Config/DatabaseName != '' and $Config/ChunkCount > 0 and $Config/ChunksModelId != $Config/EmbeddingModelKey, Class: 'bedrock-note bedrock-note-warn') {
+            dynamictext txtAskModelStale (Content: 'The tickets were indexed with another embedding model. Answers will be poor until you rebuild with {1}.', ContentParams: ({1} = $Config/EmbeddingModelName), Class: 'bedrock-grow')
+            actionbutton btnAskRebuildModel (Caption: 'Rebuild now', Action: call microflow AWSBedrockImplementation.ACT_Chunks_Rebuild with (ProgressBar: Blocking, ProgressMessage: 'Rebuilding chunks and embedding the tickets…'), ButtonStyle: Primary, DesignProperties: ('Size': 'Small'))
+          }
+          container ctnAskTicketsChanged (Visible: $Config/DatabaseName != '' and $Config/ChunkCount > 0 and $Config/ChunksModelId = $Config/EmbeddingModelKey and $Config/StaleTicketCount > 0, Class: 'bedrock-note bedrock-note-warn') {
+            dynamictext txtAskTicketsChanged (Content: '{1} changed since indexing. Answers do not include the changes yet.', ContentParams: ({1} = toString($Config/StaleTicketCount) + (if $Config/StaleTicketCount = 1 then ' ticket' else ' tickets')), Class: 'bedrock-grow')
+            actionbutton btnAskRebuildTickets (Caption: 'Rebuild now', Action: call microflow AWSBedrockImplementation.ACT_Chunks_Rebuild with (ProgressBar: Blocking, ProgressMessage: 'Rebuilding chunks and embedding the tickets…'), ButtonStyle: Primary, DesignProperties: ('Size': 'Small'))
+          }
+          dataview dvAskSession (DataSource: microflow AWSBedrockImplementation.DS_AskSession, FormOrientation: Vertical) {
+            container ctnComposer (Class: 'bedrock-card bedrock-composer') {
+              container ctnComposerBody (Class: 'bedrock-card-body') {
+                textarea taQuestion (Label: 'Ask about your tickets', Attribute: Question, Editable: $Config/DatabaseName != '' and $Config/ChunkCount > 0)
+                container ctnExamples (Class: 'bedrock-examples', Visible: $Config/DatabaseName != '' and $Config/ChunkCount > 0) {
+                  actionbutton btnExample1 (Caption: 'Why can’t users save their documents?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'Why can’t users save their documents?'), Class: 'bedrock-example')
+                  actionbutton btnExample2 (Caption: 'How should we reply to customers who cannot submit the form?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'How should we reply to customers who cannot submit the form?'), Class: 'bedrock-example')
+                  actionbutton btnExample3 (Caption: 'Which printing problems are already solved?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'Which printing problems are already solved?'), Class: 'bedrock-example')
+                  actionbutton btnExample4 (Caption: 'Are there any problems with shared or cloud documents?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'Are there any problems with shared or cloud documents?'), Class: 'bedrock-example')
+                }
+                accordion accOptions (collapsible: true, expandBehavior: 'multipleExpanded') {
+                  group grpOptions (headerRenderMode: 'text', headerText: 'Options', initialCollapsedState: 'collapsed') {
+                    layoutgrid lgOptions {
+                      row {
+                        column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                          slider sldMaxTickets (Label: 'Tickets to use', valueAttribute: MaxTickets, staticMinimumValue: 1, staticMaximumValue: 10, stepValue: 1, decimalPlaces: 0, noOfMarkers: 0)
+                        }
+                        column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+                          slider sldStrictness (Label: 'Match strictness', valueAttribute: Strictness, staticMinimumValue: 0, staticMaximumValue: 1, stepValue: 0.05, decimalPlaces: 2, noOfMarkers: 0, onChange: call microflow AWSBedrockImplementation.ACT_AskSession_StrictnessChanged)
+                          dynamictext txtStrictnessLabel (Content: '{1}', ContentParams: ({1} = $currentObject/StrictnessLabel), Class: 'bedrock-hint')
+                        }
+                      }
+                    }
+                    textarea taInstructions (Label: 'Instructions for the model', Attribute: Instructions)
+                  }
+                }
+                container ctnAskActions (Class: 'bedrock-composer-actions') {
+                  dynamictext txtAskHint (Content: 'Write a question, then click Ask.', Class: 'bedrock-hint')
+                  actionbutton btnAsk (Caption: 'Ask', Visible: $Config/DatabaseName != '' and $Config/ChunkCount > 0, Action: call microflow AWSBedrockImplementation.ACT_Ask with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), ButtonStyle: Primary)
+                }
+              }
+            }
+            container ctnAnswersHeader (Visible: $currentObject/AnswerCount > 0, Class: 'bedrock-answers-header') {
+              dynamictext txtAnswersTitle (Content: 'Answers', RenderMode: H4)
+              actionbutton btnClearAnswers (Caption: 'Clear answers', Action: call microflow AWSBedrockImplementation.ACT_AskSession_ClearAnswers, Class: 'btn-link')
+            }
+            container ctnNoAnswers (Visible: $currentObject/AnswerCount = 0, Class: 'bedrock-empty') {
+              dynamictext txtNoAnswersTitle (Content: 'Ask your first question', RenderMode: H3)
+              dynamictext txtNoAnswersText (Content: 'Pick an example above or write your own. You will see the answer, the tickets it is based on, and exactly what was sent to the model.')
+            }
+            listview lvAnswers (DataSource: microflow AWSBedrockImplementation.DS_AskEntries(AskSession = $currentObject), DesignProperties: ('Style': 'No styling')) {
+              container ctnEntry (Class: 'bedrock-card bedrock-entry') {
+                container ctnEntryHeader (Class: 'bedrock-entry-header') {
+                  container ctnEntryQuestion {
+                    dynamictext txtEntryLabel (Content: 'You asked', Class: 'bedrock-label')
+                    dynamictext txtEntryQuestion (Content: '{1}', ContentParams: ({1} = $currentObject/Question), RenderMode: H4, Class: 'bedrock-entry-question')
+                  }
+                  dynamictext txtEntryTime (Content: '{1}', ContentParams: ({1} = formatDateTime($currentObject/CreatedAt, 'HH:mm')), Class: 'bedrock-hint')
+                }
+                container ctnEntryNoMatch (Visible: $currentObject/NoMatch, Class: 'bedrock-entry-body') {
+                  container ctnEntryNoMatchNote (Class: 'bedrock-note bedrock-note-warn') {
+                    dynamictext txtEntryNoMatch (Content: 'No tickets matched closely enough. The match strictness was {1} ({2}), so nothing was sent to {3}.', ContentParams: ({1} = $currentObject/StrictnessText, {2} = toString(round($currentObject/StrictnessUsed, 2)), {3} = $currentObject/ModelName))
+                  }
+                  container ctnEntryNoMatchActions (Class: 'bedrock-actions') {
+                    actionbutton btnEntryLoosen (Caption: 'Loosen the match and ask again', Action: call microflow AWSBedrockImplementation.ACT_AskEntry_LoosenAndAsk(AskEntry = $currentObject, AskSession = $dvAskSession) with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), ButtonStyle: Primary)
+                    actionbutton btnEntryAskAsIs (Caption: 'Ask again as is', Action: call microflow AWSBedrockImplementation.ACT_AskEntry_AskAgain(AskEntry = $currentObject, AskSession = $dvAskSession) with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'))
+                  }
+                }
+                container ctnEntryError (Visible: $currentObject/ErrorText != empty, Class: 'bedrock-entry-body') {
+                  container ctnEntryErrorNote (Class: 'bedrock-note bedrock-note-bad') {
+                    dynamictext txtEntryError (Content: '{1}', ContentParams: ({1} = $currentObject/ErrorText))
+                  }
+                }
+                container ctnEntryAnswer (Visible: $currentObject/HasAnswer, Class: 'bedrock-entry-body') {
+                  container ctnEntryAnswerText (Class: 'bedrock-entry-answer') {
+                    markdown mdEntryAnswer (stringAttribute: Answer)
+                  }
+                  container ctnEntrySources (Class: 'bedrock-sources-block') {
+                    dynamictext txtSourcesLabel (Content: 'Sources used ({1})', ContentParams: ({1} = toString($currentObject/SourceCount)), Class: 'bedrock-label')
+                    listview lvSources (DataSource: $currentObject/AWSBedrockImplementation.AskEntry_AskSource, DesignProperties: ('Style': 'No styling'), Class: 'bedrock-sources') {
+                      container ctnSource (Class: 'bedrock-source') {
+                        container ctnSourceHeader (Class: 'bedrock-source-header') {
+                          dynamictext txtSourceNumber (Content: '{1}', ContentParams: ({1} = toString($currentObject/Number)), Class: 'bedrock-source-number')
+                          container ctnSourceTitle {
+                            dynamictext txtSourceTitle (Content: '{1}', ContentParams: ({1} = $currentObject/Title), RenderMode: H5, Class: 'bedrock-cell-title')
+                            dynamictext txtSourceRef (Content: '{1}', ContentParams: ({1} = $currentObject/TicketRef), Class: 'bedrock-hint')
+                          }
+                        }
+                        dynamictext txtSourceSnippet (Content: '{1}', ContentParams: ({1} = $currentObject/Snippet), Class: 'bedrock-source-snippet')
+                        container ctnSourceScore (Class: 'bedrock-source-score') {
+                          progressbar pbSource (type: 'expression', expressionCurrentValue: '$currentObject/SimilarityPercent', expressionMinValue: '0', expressionMaxValue: '100')
+                          dynamictext txtSourceScore (Content: '{1}', ContentParams: ({1} = toString(round($currentObject/Similarity, 2))), Class: 'bedrock-mono')
+                        }
+                      }
+                    }
+                  }
+                  accordion accSent (collapsible: true, expandBehavior: 'multipleExpanded') {
+                    group grpSent (headerRenderMode: 'text', headerText: 'Exactly what was sent to the model', initialCollapsedState: 'collapsed') {
+                      textarea taSent (Label: '', Attribute: SentToModel, Editable: Never, Class: 'bedrock-mono')
+                    }
+                  }
+                  container ctnEntryFooter (Class: 'bedrock-entry-footer') {
+                    dynamictext txtEntryMeta (Content: '{1} · {2} s · {3}', ContentParams: ({1} = toString($currentObject/SourceCount) + (if $currentObject/SourceCount = 1 then ' ticket' else ' tickets'), {2} = toString(round($currentObject/Seconds, 1)), {3} = $currentObject/ModelName), Class: 'bedrock-hint')
+                    actionbutton btnEntryAskAgain (Caption: 'Ask again', Action: call microflow AWSBedrockImplementation.ACT_AskEntry_AskAgain(AskEntry = $currentObject, AskSession = $dvAskSession) with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), Class: 'btn-link')
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};

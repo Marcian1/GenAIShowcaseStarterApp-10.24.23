@@ -1,0 +1,5 @@
+mdl 1;
+create association AWSBedrockImplementation.TicketChunk_Ticket
+from AWSBedrockImplementation.TicketChunk to AWSBedrockImplementation.Ticket
+storage table;
+grant read (TicketChunk_Ticket) on entity AWSBedrockImplementation.TicketChunk to AWSBedrockImplementation.Admin;

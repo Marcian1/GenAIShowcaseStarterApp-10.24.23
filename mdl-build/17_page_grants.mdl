@@ -1,0 +1,4 @@
+mdl 1;
+grant view on page AWSBedrockImplementation.BedrockModel_Edit to AWSBedrockImplementation.Admin, AWSBedrockImplementation.User;
+grant view on page AWSBedrockImplementation.BedrockModel_Try to AWSBedrockImplementation.Admin, AWSBedrockImplementation.User;
+grant view on page AWSBedrockImplementation.Ticket_Edit to AWSBedrockImplementation.Admin, AWSBedrockImplementation.User;

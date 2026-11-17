@@ -1,0 +1,23 @@
+mdl 1;
+drop microflow AWSBedrockImplementation.SUB_TrySession_Dispatch;
+
+/** Picks the request builder that matches the family of the selected model. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_Dispatch (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  case $BedrockModel/Family
+    when Claude then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendClaude(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Cohere then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendCohere(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Titan then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendTitan(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when (empty) then
+      log warning node 'AWSBedrockImplementation' 'The selected model has no family.';
+  end case;
+  return;
+end;

@@ -1,0 +1,21 @@
+mdl 1;
+
+drop microflow AWSBedrockImplementation.IMM_Ticket_ParseStatus;
+
+/** Maps the status text of the sample ticket JSON to the ticket status. Open used to map to In Progress and the captions were compared, which fails when a caption translation is empty. */
+create or modify microflow AWSBedrockImplementation.IMM_Ticket_ParseStatus (
+  $Status: String
+)
+returns enum AWSBedrockImplementation.ENUM_Ticket_Status as $TicketStatus
+folder 'Ticket'
+begin
+  declare $TicketStatus enum AWSBedrockImplementation.ENUM_Ticket_Status = empty;
+  if $Status = 'In Progress' then
+    set $TicketStatus = AWSBedrockImplementation.ENUM_Ticket_Status.In_Progress;
+  elsif $Status = 'Open' then
+    set $TicketStatus = AWSBedrockImplementation.ENUM_Ticket_Status.Open;
+  elsif $Status = 'Closed' then
+    set $TicketStatus = AWSBedrockImplementation.ENUM_Ticket_Status.Closed;
+  end if;
+  return $TicketStatus;
+end;

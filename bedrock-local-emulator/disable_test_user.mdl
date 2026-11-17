@@ -1,0 +1,2 @@
+drop demo user 'MockTester';
+alter app security ( EnableDemoUsers: false );

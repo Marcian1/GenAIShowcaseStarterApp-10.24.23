@@ -1,0 +1,80 @@
+mdl 1;
+
+alter entity AWSBedrockImplementation.Config add attribute ChatModelName: String(200);
+alter entity AWSBedrockImplementation.Config add attribute ChatModelKey: String(300);
+alter entity AWSBedrockImplementation.Config add attribute EmbeddingModelName: String(200);
+alter entity AWSBedrockImplementation.Config add attribute EmbeddingModelKey: String(300);
+alter entity AWSBedrockImplementation.Config add attribute EmbeddingDimension: Integer default 0;
+alter entity AWSBedrockImplementation.Config add attribute DatabaseName: String(200);
+grant read *, write * on entity AWSBedrockImplementation.Config to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.SUB_Config_RefreshStatus;
+
+/** Recomputes everything the setup status shows (counts, ready flags and the names of the selected models and database) and saves it on the Config. Page expressions cannot follow associations, so the names are copied onto the Config here. Call this after anything that changes the setup. */
+create or modify microflow AWSBedrockImplementation.SUB_Config_RefreshStatus (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  retrieve $TicketList from AWSBedrockImplementation.Ticket;
+  $TicketCount = count $TicketList;
+  declare $StaleCount Integer = $TicketCount;
+  if $Config/ChunksCreatedAt != empty then
+    retrieve $StaleList from AWSBedrockImplementation.Ticket
+      where ChangedDateTime > $Config/ChunksCreatedAt;
+    $StaleListCount = count $StaleList;
+    set $StaleCount = $StaleListCount;
+  end if;
+  if $StaleCount = 0 and $Config/ChunkCount > 0 and $Config/ChunkCount != $TicketCount then
+    set $StaleCount = abs($Config/ChunkCount - $TicketCount);
+  end if;
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  declare $ChatName String = '';
+  declare $ChatKey String = '';
+  if $ChatModel != empty then
+    set $ChatName = $ChatModel/Name;
+    set $ChatKey = $ChatModel/ModelId;
+  end if;
+  declare $EmbeddingName String = '';
+  declare $EmbeddingKey String = '';
+  declare $EmbeddingDimension Integer = 0;
+  declare $KnowledgeBaseReady Boolean = false;
+  if $EmbeddingModel != empty then
+    set $EmbeddingName = $EmbeddingModel/Name;
+    set $EmbeddingKey = $EmbeddingModel/ModelId;
+    set $EmbeddingDimension = $EmbeddingModel/Dimension;
+    if $Config/ChunkCount > 0 and $Config/ChunksModelId = $EmbeddingModel/ModelId and $StaleCount = 0 then
+      set $KnowledgeBaseReady = true;
+    end if;
+  end if;
+  declare $DatabaseName String = '';
+  if $Database != empty then
+    set $DatabaseName = $Database/DisplayName;
+  end if;
+  declare $EncryptionReady Boolean = @Encryption.EncryptionKey != '';
+  declare $DatabaseReady Boolean = $Database != empty and $Config/PgTestOk;
+  declare $ReadyCount Integer = (if $Config/AwsTestOk then 1 else 0) + (if $EncryptionReady then 1 else 0) + (if $DatabaseReady then 1 else 0) + (if $ChatModel != empty then 1 else 0) + (if $EmbeddingModel != empty then 1 else 0) + (if $TicketCount > 0 then 1 else 0) + (if $KnowledgeBaseReady then 1 else 0);
+  change $Config (
+    TicketCount = $TicketCount,
+    StaleTicketCount = $StaleCount,
+    ChatModelName = $ChatName,
+    ChatModelKey = $ChatKey,
+    EmbeddingModelName = $EmbeddingName,
+    EmbeddingModelKey = $EmbeddingKey,
+    EmbeddingDimension = $EmbeddingDimension,
+    DatabaseName = $DatabaseName,
+    IsEncryptionReady = $EncryptionReady,
+    IsDatabaseReady = $DatabaseReady,
+    IsChatReady = $ChatModel != empty,
+    IsEmbeddingReady = $EmbeddingModel != empty,
+    IsTicketsReady = $TicketCount > 0,
+    IsKnowledgeBaseReady = $KnowledgeBaseReady,
+    ReadyCount = $ReadyCount
+  );
+  commit $Config refresh;
+  return;
+end;
+
+grant execute on microflow AWSBedrockImplementation.SUB_Config_RefreshStatus to AWSBedrockImplementation.Admin;

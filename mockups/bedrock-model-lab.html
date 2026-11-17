@@ -1,0 +1,776 @@
+<title>Bedrock Model Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Open+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: Atlas-style admin shell (top bar, left menu, one working surface per page) so every block maps to a stock Mendix widget. */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --surface-2:#f7f8fb; --line:#dde1e9; --line-strong:#c4cad6;
+  --fg:#1c2331; --muted:#5d6879; --accent:#264ae5; --accent-hover:#1c39b8; --accent-soft:#e8edff; --accent-fg:#ffffff;
+  --ok:#14804a; --ok-soft:#e3f5ec; --warn:#94600a; --warn-soft:#fbf0d9; --crit:#c0392b; --crit-soft:#fbe9e6;
+  --mx:#d9480f; --code-bg:#f1f3f8;
+  --font:'Open Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10131a; --surface:#181c26; --surface-2:#1d222e; --line:#2a3140; --line-strong:#3a4356;
+  --fg:#e5e8ef; --muted:#97a2b5; --accent:#8099ff; --accent-hover:#a3b5ff; --accent-soft:#232c55; --accent-fg:#0d1230;
+  --ok:#4cc88a; --ok-soft:#173326; --warn:#e5b25a; --warn-soft:#36290f; --crit:#f08073; --crit-soft:#3a1d19;
+  --mx:#ff8a55; --code-bg:#12161f; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#10131a; --surface:#181c26; --surface-2:#1d222e; --line:#2a3140; --line-strong:#3a4356;
+  --fg:#e5e8ef; --muted:#97a2b5; --accent:#8099ff; --accent-hover:#a3b5ff; --accent-soft:#232c55; --accent-fg:#0d1230;
+  --ok:#4cc88a; --ok-soft:#173326; --warn:#e5b25a; --warn-soft:#36290f; --crit:#f08073; --crit-soft:#3a1d19;
+  --mx:#ff8a55; --code-bg:#12161f; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;margin:0}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+h1{font-size:22px;line-height:1.25} h2{font-size:15px} h3{font-size:13px}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-size:12px}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+[data-mx]{position:relative}
+
+/* shell */
+.app{display:grid;grid-template-columns:224px minmax(0,1fr);grid-template-rows:auto auto 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;margin-right:auto}
+.brand .logo{width:26px;height:26px;border-radius:6px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:13px;font-weight:700}
+.tag{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:default}
+button.pill{cursor:pointer}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--crit)}
+.mxswitch{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--mx);cursor:pointer;user-select:none}
+.banner{grid-column:1/-1;padding:7px max(16px,env(safe-area-inset-right,0px)) 7px max(16px,env(safe-area-inset-left,0px));background:var(--warn-soft);color:var(--warn);font-size:12px;border-bottom:1px solid var(--line)}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:14px 10px 14px max(10px,env(safe-area-inset-left,0px))}
+.side h4{margin:14px 10px 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.side h4:first-child{margin-top:0}
+.side a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);color:var(--fg);text-decoration:none;font-weight:500}
+.side a:hover{background:var(--surface-2)}
+.side a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.side svg{flex:none}
+main{padding:20px max(16px,env(safe-area-inset-right,0px)) 40px 24px;min-width:0}
+.pagehead{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.pagehead p{color:var(--muted);margin-top:4px;max-width:62ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--r);padding:7px 14px;cursor:pointer;font-weight:600;font-size:13px;line-height:1.3}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent)}
+.btn.ghost:hover{background:var(--accent-soft)}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label,.lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.field .hint{font-size:12px;color:var(--muted)}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--r);padding:7px 10px;min-width:0}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+input[readonly]{background:var(--surface-2);color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.rangeline{display:flex;align-items:center;gap:10px}
+.rangeline output{font-family:var(--mono);font-size:12px;min-width:44px;text-align:right}
+.switch{width:36px;height:20px;border-radius:999px;border:0;background:var(--line-strong);position:relative;cursor:pointer;flex:none;padding:0}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(16px)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-weight:600;font-size:12px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.crit{background:var(--crit-soft);color:var(--crit);border-color:transparent}
+.chip.acc{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+/* cards + tables */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.card>.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card>.bd{padding:16px}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.toolbar .grow{flex:1 1 200px;min-width:160px}
+.toolbar select{width:auto}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 16px;font-weight:600;background:var(--surface-2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.rowclick{cursor:pointer} tr.rowclick:hover td{background:var(--surface-2)}
+td .name{font-weight:600}
+.av{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.av.Anthropic{background:#f6e3d8;color:#8a3d12}.av.Amazon{background:#fdebc8;color:#7a4b00}.av.Meta{background:#dbe8fb;color:#1c4a99}.av.Mistral{background:#fbe0d3;color:#a3330d}.av.Cohere{background:#dff3e6;color:#17663a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .av{filter:brightness(.82) saturate(.9)}}
+:root[data-theme="dark"] .av{filter:brightness(.82) saturate(.9)}
+.modelcell{display:flex;gap:12px;align-items:center}
+.sub{font-size:12px;color:var(--muted)}
+.newbadge{margin-left:6px}
+.empty{padding:36px 16px;text-align:center;color:var(--muted)}
+
+/* playground */
+.pg{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:14px}
+.transcript{display:flex;flex-direction:column;gap:14px;padding:16px;min-height:260px}
+.msg{display:flex;flex-direction:column;gap:5px;max-width:78ch}
+.msg .who{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.bubble{padding:10px 14px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);background:var(--surface-2)}
+.msg.user .bubble{background:var(--accent-soft);border-color:transparent}
+.msg.err .bubble{background:var(--crit-soft);border-color:transparent;color:var(--crit)}
+.meta{display:flex;gap:6px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.meta b{color:var(--fg);font-weight:600}
+.composer{border-top:1px solid var(--line);padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.composer .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.typing{display:inline-flex;gap:4px;padding:6px 2px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:b 1s infinite ease-in-out}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.25}40%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.typing i{animation:none;opacity:.6}}
+pre.code{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;overflow:auto;max-height:300px;font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 12px}
+.tabs button{border:0;background:transparent;padding:10px 12px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--accent);border-color:var(--accent)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.kv div{display:flex;flex-direction:column}
+.kv .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.kv .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* compare */
+.cmpgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.cmpcard{display:flex;flex-direction:column}
+.cmpcard .bd{flex:1;white-space:pre-wrap;overflow-wrap:anywhere;min-height:140px}
+.cmpcard .ft{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:6px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.barrow{display:grid;grid-template-columns:minmax(110px,170px) 1fr 70px;gap:10px;align-items:center;font-size:12px;padding:5px 0}
+.barrow span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.pickgrid{display:flex;gap:8px;flex-wrap:wrap}
+.pick{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);border-radius:var(--r);padding:6px 10px;cursor:pointer;background:var(--surface);font-size:13px;font-weight:600}
+.pick[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.pick[disabled]{opacity:.45;cursor:not-allowed}
+
+/* connection / forms */
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.radiocards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.rc{border:1px solid var(--line-strong);border-radius:8px;padding:12px;cursor:pointer;background:var(--surface);text-align:left;display:flex;flex-direction:column;gap:3px}
+.rc[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.rc b{font-size:13px}.rc span{font-size:12px;color:var(--muted)}
+.checks{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.checks div{display:flex;gap:10px;align-items:flex-start}
+.checks svg{flex:none;margin-top:2px}
+.vecviz{display:block;width:100%;height:96px}
+
+/* modal + toast */
+.overlay{position:fixed;inset:0;background:rgba(10,14,22,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) 16px 24px;overflow:auto;z-index:50}
+.modal{background:var(--surface);border-radius:10px;border:1px solid var(--line);width:min(620px,100%);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal .bd{padding:18px;display:flex;flex-direction:column;gap:14px}
+.modal .ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;z-index:60;max-width:calc(100% - 32px)}
+.spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:r .7s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2s}}
+
+/* mendix mapping overlay */
+body.mx [data-mx]{outline:1.5px dashed var(--mx);outline-offset:2px}
+body.mx [data-mx]::after{content:attr(data-mx);position:absolute;top:-10px;left:8px;background:var(--mx);color:#fff;font:600 10px/1.5 var(--mono);padding:0 6px;border-radius:3px;z-index:20;white-space:nowrap;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+body.mx .modal[data-mx]::after,body.mx .overlay [data-mx]::after{z-index:70}
+.bp h2{margin:26px 0 10px}
+.bp .card table{min-width:640px}
+.bp td,.bp th{padding:9px 14px}
+.bp code{font-family:var(--mono);font-size:12px;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+
+@media (max-width:860px){
+  .pg{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{display:flex;overflow-x:auto;gap:2px;padding:6px max(10px,env(safe-area-inset-left,0px));border-right:0;border-bottom:1px solid var(--line)}
+  .side h4{display:none}
+  .side a{white-space:nowrap;padding:7px 12px}
+  main{padding:16px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+  .barrow{grid-template-columns:90px 1fr 56px}
+}
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo">B</span>Bedrock Model Lab <span class="tag">Mockup</span></div>
+    <button class="pill" id="pillRegion" data-act="go" data-route="connection" title="Open connection settings"></button>
+    <button class="pill" id="pillConn" data-act="go" data-route="connection"></button>
+    <label class="mxswitch" title="Overlay the Mendix widget, entity and microflow behind each block">
+      <button class="switch" id="mxToggle" role="switch" aria-checked="false" aria-label="Show Mendix mapping" data-act="mx"></button>
+      Show Mendix mapping
+    </label>
+  </header>
+  <div class="banner">Mockup: responses, latency and the model list are simulated in the browser. Nothing calls AWS.</div>
+  <nav class="side" id="nav" data-mx="Navigation profile · menu items → pages"></nav>
+  <main id="view"></main>
+</div>
+<div id="layer"></div>
+
+<script>
+/* =====================================================================
+   DATA LAYER  (the only part that changes when this becomes Mendix)
+   Every Backend.* method = one microflow. Every object shape = one entity.
+   In Mendix the page binds to the entities directly and the buttons call
+   the microflows named in the comments; the rest of this file is just UI.
+   ===================================================================== */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const now = () => Date.now();
+
+const DB = {
+  // Entity: AWSBedrockImplementation.Config (existing, extended)
+  config: { authMode:'webidentity', region:'eu-central-1', roleArn:'arn:aws:iam::123456789012:role/genai-showcase-bedrock', tokenFile:'/var/run/secrets/eks.amazonaws.com/serviceaccount/token',
+            accessKeyId:'', secretKey:'', guardrailId:'', guardrailVersion:'DRAFT', endpoint:'', connected:true, latencyMs:142 },
+  // Entity: AWSBedrockImplementation.BedrockModel (new)
+  models: [
+    m('eu.anthropic.claude-sonnet-4-5-20250929-v1:0','Claude Sonnet 4.5','Anthropic','chat','Inference profile','available',true,{inMod:'Text, Image',outMod:'Text',temp:0.7,max:2048,topP:0.9,sys:'You are a helpful assistant for the support team.'}),
+    m('eu.anthropic.claude-haiku-4-5-20251001-v1:0','Claude Haiku 4.5','Anthropic','chat','Inference profile','available',true,{inMod:'Text, Image',outMod:'Text',temp:0.5,max:1024,topP:0.9,sys:''}),
+    m('eu.anthropic.claude-opus-4-1-20250805-v1:0','Claude Opus 4.1','Anthropic','chat','Inference profile','noaccess',false,{inMod:'Text, Image',outMod:'Text',temp:0.7,max:2048,topP:0.9,sys:''}),
+    m('eu.amazon.nova-pro-v1:0','Nova Pro','Amazon','chat','Inference profile','available',true,{inMod:'Text, Image, Video',outMod:'Text',temp:0.6,max:2048,topP:0.9,sys:''}),
+    m('eu.amazon.nova-lite-v1:0','Nova Lite','Amazon','chat','Inference profile','available',false,{inMod:'Text, Image, Video',outMod:'Text',temp:0.6,max:1024,topP:0.9,sys:''}),
+    m('eu.amazon.nova-micro-v1:0','Nova Micro','Amazon','chat','Inference profile','available',false,{inMod:'Text',outMod:'Text',temp:0.6,max:1024,topP:0.9,sys:''}),
+    m('eu.meta.llama3-3-70b-instruct-v1:0','Llama 3.3 70B Instruct','Meta','chat','Inference profile','available',false,{inMod:'Text',outMod:'Text',temp:0.5,max:1024,topP:0.9,sys:''}),
+    m('mistral.mistral-large-2402-v1:0','Mistral Large (24.02)','Mistral','chat','On-demand','legacy',false,{inMod:'Text',outMod:'Text',temp:0.7,max:1024,topP:1,sys:''}),
+    m('amazon.titan-embed-text-v2:0','Titan Text Embeddings V2','Amazon','embedding','On-demand','available',true,{inMod:'Text',outMod:'Embedding',dim:1024,normalize:true}),
+    m('cohere.embed-multilingual-v3','Cohere Embed Multilingual v3','Cohere','embedding','On-demand','available',true,{inMod:'Text',outMod:'Embedding',dim:1024,normalize:true}),
+    m('cohere.embed-english-v3','Cohere Embed English v3','Cohere','embedding','On-demand','available',false,{inMod:'Text',outMod:'Embedding',dim:1024,normalize:true}),
+    m('amazon.titan-image-generator-v2:0','Titan Image Generator V2','Amazon','image','On-demand','available',false,{inMod:'Text, Image',outMod:'Image'}),
+  ],
+  // Entity: AWSBedrockImplementation.TestRun (new, persistent)
+  runs: [],
+  syncCount: 0,
+};
+function m(id,name,provider,type,inference,status,active,x){return Object.assign({id,name,provider,type,inference,status,active,manual:false,isNew:false,synced:'2 days ago'},x)}
+DB.runs = [
+  run(now()-7*60e3,'Claude Sonnet 4.5','eu.anthropic.claude-sonnet-4-5-20250929-v1:0','chat','Summarise this ticket in two sentences.',1380,41,96,'ok','end_turn'),
+  run(now()-6*60e3,'Claude Haiku 4.5','eu.anthropic.claude-haiku-4-5-20251001-v1:0','chat','Summarise this ticket in two sentences.',720,41,88,'ok','end_turn'),
+  run(now()-52*60e3,'Titan Text Embeddings V2','amazon.titan-embed-text-v2:0','embedding','Login page shows a blank screen after the update',310,11,0,'ok','—'),
+  run(now()-3*3600e3,'Nova Pro','eu.amazon.nova-pro-v1:0','chat','Write a polite reply for a delayed refund.',1010,23,140,'ok','end_turn'),
+  run(now()-26*3600e3,'Mistral Large (24.02)','mistral.mistral-large-2402-v1:0','chat','Classify: bug or feature request?',210,12,0,'error','ResourceNotFoundException'),
+];
+function run(ts,modelName,modelId,type,prompt,latency,inTok,outTok,status,stop){return {id:'r'+Math.random().toString(36).slice(2,8),ts,modelName,modelId,type,prompt,latency,inTok,outTok,status,stop}}
+
+const Backend = {
+  /* DS_Config */                    async getConfig(){ await sleep(30); return DB.config },
+  /* ACT_Config_Save */              async saveConfig(c){ await sleep(250); Object.assign(DB.config,c); return DB.config },
+  /* ACT_Connection_Test (Java: STS + ListFoundationModels) */
+  async testConnection(){
+    await sleep(1100);
+    const c = DB.config, ok = c.authMode !== 'keys' || (c.accessKeyId && c.secretKey);
+    c.connected = !!ok; c.latencyMs = ok ? 120 + Math.round(Math.random()*60) : null;
+    return { ok:!!ok, latencyMs:c.latencyMs,
+      steps:[
+        {ok:true, text:'Region '+c.region+' resolved'+(c.endpoint?' via endpoint override '+c.endpoint:'')},
+        {ok:!!ok, text: ok ? ({webidentity:'Credentials from web identity token (STS AssumeRoleWithWebIdentity)',keys:'Credentials from access key pair',chain:'Credentials from default provider chain'})[c.authMode] : 'No access key or secret key set'},
+        {ok:!!ok, text: ok ? 'Caller: arn:aws:sts::123456789012:assumed-role/genai-showcase-bedrock/mendix-app' : 'Skipped: no credentials'},
+        {ok:!!ok, text: ok ? 'bedrock:ListFoundationModels allowed, '+(DB.models.length+12)+' models visible' : 'Skipped: no credentials'},
+      ]};
+  },
+  /* DS_BedrockModel_List */         async listModels(){ return DB.models },
+  /* ACT_Model_Sync (JA_ListFoundationModels + upsert by ModelId) */
+  async syncModels(){
+    await sleep(1500); DB.syncCount++;
+    if (DB.syncCount > 1) return {added:0, changed:0};
+    DB.models.push(
+      Object.assign(m('eu.amazon.nova-premier-v1:0','Nova Premier','Amazon','chat','Inference profile','available',false,{inMod:'Text, Image, Video',outMod:'Text',temp:0.6,max:2048,topP:0.9,sys:''}),{isNew:true,synced:'just now'}),
+      Object.assign(m('cohere.embed-v4:0','Cohere Embed v4','Cohere','embedding','On-demand','available',false,{inMod:'Text, Image',outMod:'Embedding',dim:1536,normalize:true}),{isNew:true,synced:'just now'}));
+    DB.models.forEach(x=>{ x.synced = x.isNew ? 'just now' : 'just now' });
+    return {added:2, changed:1};
+  },
+  /* ACT_Model_ToggleActive */
+  async setActive(id,on){
+    await sleep(60); const x = DB.models.find(q=>q.id===id);
+    if (x.status==='noaccess' && on) return {error:'Model access is not granted in this AWS account. Request access in the Bedrock console first.'};
+    x.active = on; return {ok:true};
+  },
+  /* ACT_Model_Save / ACT_Model_Delete */
+  async saveModel(x){ await sleep(150); const i = DB.models.findIndex(q=>q.id===x.origId); const {origId,...rest}=x; if(i>=0) DB.models[i]=Object.assign(DB.models[i],rest); else DB.models.unshift(Object.assign(rest,{manual:true,status:'available',synced:'manual',inMod:'Text',outMod:rest.type==='embedding'?'Embedding':'Text'})); return true },
+  async deleteModel(id){ DB.models = DB.models.filter(q=>q.id!==id); return true },
+  /* ACT_Playground_Send  → Java: Converse API (chat) / InvokeModel (embeddings) */
+  async invokeChat(req){
+    const mdl = DB.models.find(q=>q.id===req.modelId);
+    const base = {'Claude Haiku 4.5':650,'Claude Sonnet 4.5':1250,'Nova Pro':950,'Nova Lite':520,'Nova Micro':380,'Nova Premier':1500,'Llama 3.3 70B Instruct':1050,'Claude Opus 4.1':2100}[mdl.name] || 900;
+    const rawReq = converseRequest(req);
+    if (mdl.status==='legacy') { await sleep(450); return {error:{name:'ResourceNotFoundException',message:'This model version has reached the end of its life. Choose a newer model. (Service: BedrockRuntime, Status Code: 404)'}, rawReq, latency:210, inTok:0, outTok:0}; }
+    const last = req.messages[req.messages.length-1].text;
+    const inTok = estTok(req.system+' '+req.messages.map(x=>x.text).join(' '));
+    let text, stop='end_turn';
+    if (req.guardrail && /password|ssn|credit card|iban/i.test(last)) { text='Sorry, the model cannot answer this question.'; stop='guardrail_intervened'; }
+    else { text = mockAnswer(mdl,last,req.system); const lim = Math.floor(req.maxTokens/1.35); const w = text.split(/(\s+)/); const words = text.split(/\s+/); if (words.length>lim){ let c=0,out=''; for(const part of w){ if(/\S/.test(part)) c++; if(c>lim) break; out+=part } text=out.trim(); stop='max_tokens' } }
+    const outTok = estTok(text), latency = Math.round(base + outTok*7 + Math.random()*180);
+    await sleep(Math.min(2200, latency*0.55));
+    return { text, stop, inTok, outTok, latency, rawReq,
+      rawRes:{output:{message:{role:'assistant',content:[{text}]}},stopReason:stop,usage:{inputTokens:inTok,outputTokens:outTok,totalTokens:inTok+outTok},metrics:{latencyMs:latency}} };
+  },
+  async invokeEmbedding(req){
+    const mdl = DB.models.find(q=>q.id===req.modelId);
+    const dim = req.dimension || mdl.dim || 1024;
+    const cohere = mdl.provider==='Cohere';
+    const rawReq = cohere ? {texts:[req.text],input_type:'search_document',embedding_types:['float'],truncate:'END'} : {inputText:req.text,dimensions:dim,normalize:true};
+    const vec = embed(req.text, dim), vecB = req.textB ? embed(req.textB, dim) : null;
+    const inTok = estTok(req.text), latency = 220 + Math.round(Math.random()*160);
+    await sleep(latency*0.8);
+    const sim = vecB ? vec.reduce((s,v,i)=>s+v*vecB[i],0) : null;
+    return { vec, dim, sim, inTok, latency, rawReq,
+      rawRes: cohere ? {id:'a1b2c3',embeddings:{float:[vec.slice(0,4).map(n=>+n.toFixed(5)).concat(['… '+(dim-4)+' more'])]},texts:[req.text],response_type:'embeddings_by_type'}
+                     : {embedding:vec.slice(0,4).map(n=>+n.toFixed(5)).concat(['… '+(dim-4)+' more']),inputTextTokenCount:inTok} };
+  },
+  /* DS_TestRun_List / ACT_TestRun_Create / ACT_TestRun_DeleteAll */
+  async listRuns(){ return DB.runs },
+  async addRun(r){ DB.runs.unshift(r) },
+  async clearRuns(){ DB.runs=[]; },
+};
+
+/* ---- mock helpers (disappear with the Java action) ---- */
+function estTok(s){ return Math.max(1, Math.round((s.trim().split(/\s+/).filter(Boolean).length)*1.35)) }
+function converseRequest(r){
+  const o = { modelId:r.modelId, messages:r.messages.map(x=>({role:x.role,content:[{text:x.text}]})) };
+  if (r.system) o.system=[{text:r.system}];
+  o.inferenceConfig = {maxTokens:r.maxTokens,temperature:r.temperature,topP:r.topP};
+  if (r.stop && r.stop.length) o.inferenceConfig.stopSequences = r.stop;
+  if (r.guardrail) o.guardrailConfig = {guardrailIdentifier:DB.config.guardrailId||'gr-demo123',guardrailVersion:DB.config.guardrailVersion||'DRAFT'};
+  return o;
+}
+function mockAnswer(mdl,prompt,system){
+  const p = prompt.trim().replace(/\s+/g,' '), t = p.length>70 ? p.slice(0,67)+'…' : p;
+  const short = /short|concise|brief|one sentence|two sentences|tl;dr/i.test(system+' '+p);
+  const sets = {
+    Anthropic:[`Happy to help with “${t}”. Here is how I would approach it.`,`Start by pinning down the goal and the constraints, because they decide which option fits. Then compare the realistic alternatives on cost, effort and risk instead of listing every possibility.`,`A practical next step is to try the smallest version that could work, measure it, and adjust. If you share more detail about your setup, I can make this more specific.`],
+    Amazon:[`Summary for “${t}”:`,`- Goal: clarify what success looks like\n- Options: compare two or three realistic approaches\n- Risk: note what could go wrong and how to detect it\n- Next step: run a small trial and review the results`,`Let me know if you want this expanded.`],
+    Meta:[`Sure! Let's break down “${t}”.`,`1. Define what you are trying to achieve.\n2. List the main options and their trade-offs.\n3. Pick one, test it quickly, and iterate based on what you learn.`,`Hope that helps! Want me to go deeper on any step?`],
+    Mistral:[`Regarding “${t}”:`,`Identify the objective, weigh the options by cost and risk, then validate the choice with a small experiment before committing.`],
+  };
+  const parts = sets[mdl.provider] || sets.Anthropic;
+  return (short ? parts.slice(0,1) : parts).join('\n\n');
+}
+function hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619) } return h>>>0 }
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296 } }
+const wcache = {};
+function embed(text,dim){
+  const v = new Float64Array(dim);
+  text.toLowerCase().split(/[^a-z0-9äöüß]+/).filter(Boolean).forEach(w=>{
+    const k = w+'|'+dim; if(!wcache[k]){ const r=rng(hash(w)); wcache[k]=Array.from({length:dim},()=>r()*2-1) }
+    wcache[k].forEach((x,i)=>v[i]+=x);
+  });
+  let n = Math.sqrt(v.reduce((s,x)=>s+x*x,0)) || 1;
+  return Array.from(v,x=>x/n);
+}
+
+/* =====================================================================
+   UI
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ico = {
+  models:'<path d="M3 7l9-4 9 4-9 4-9-4zM3 12l9 4 9-4M3 17l9 4 9-4"/>',
+  play:'<path d="M6 4l14 8-14 8z"/>',
+  cmp:'<path d="M9 4v16M15 4v16M4 8h5M15 16h5"/>',
+  hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  conn:'<path d="M9 8V3M15 8V3M7 8h10v4a5 5 0 01-10 0V8zM12 17v4"/>',
+  bp:'<path d="M8 6L3 12l5 6M16 6l5 6-5 6"/>',
+  sync:'<path d="M20 11a8 8 0 00-14-4M4 4v4h4M4 13a8 8 0 0014 4M20 20v-4h-4"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', edit:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/>', check:'<path d="M5 12l5 5 9-10"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>',
+};
+const I = (n,s=16)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico[n]}</svg>`;
+const ago = ts => { const s=(now()-ts)/1000; if(s<60) return 'just now'; if(s<3600) return Math.round(s/60)+' min ago'; if(s<86400) return Math.round(s/3600)+' h ago'; return Math.round(s/86400)+' d ago' };
+
+const ROUTES = [
+  ['Configure'],['connection','Connection','conn'],['models','Models','models'],
+  ['Experiment'],['playground','Playground','play'],['compare','Compare','cmp'],['history','Run history','hist'],
+  ['Developer'],['blueprint','Mendix blueprint','bp'],
+];
+const S = {
+  route:'models', filter:{q:'',type:'all',prov:'all',active:false}, connTest:null, syncing:false, testing:false,
+  pg:{ modelId:'eu.anthropic.claude-sonnet-4-5-20250929-v1:0', system:'You are a helpful assistant for the support team.', temperature:0.7, maxTokens:2048, topP:0.9, stop:'', guardrail:false, keep:true,
+       messages:[], busy:false, prompt:'', tab:'req', last:null, embText:'Login page shows a blank screen after the update', embTextB:'Blank page on login after upgrading', embDim:1024, emb:null },
+  cmp:{ ids:['eu.anthropic.claude-sonnet-4-5-20250929-v1:0','eu.anthropic.claude-haiku-4-5-20251001-v1:0','eu.amazon.nova-pro-v1:0'], system:'', prompt:'Summarise this ticket in two sentences: Users cannot log in since the 2.4 update. The page loads blank on Safari.', temperature:0.5, maxTokens:512, results:{}, running:false },
+  hist:{ q:'' }, mx:false,
+};
+const mdl = id => DB.models.find(x=>x.id===id);
+const activeOf = t => DB.models.filter(x=>x.active && x.type===t);
+
+function renderNav(){
+  $('#nav').innerHTML = ROUTES.map(r => r.length===1 ? `<h4>${r[0]}</h4>` :
+    `<a href="#${r[0]}" ${S.route===r[0]?'aria-current="page"':''}>${I(r[2],18)}${r[1]}</a>`).join('');
+}
+function renderTop(){
+  const c = DB.config;
+  $('#pillRegion').innerHTML = `${esc(c.region)} · ${({webidentity:'Web identity',keys:'Access keys',chain:'Default chain'})[c.authMode]}`;
+  $('#pillConn').innerHTML = `<span class="dot ${c.connected?'ok':'bad'}"></span>${c.connected?'Connected · '+c.latencyMs+' ms':'Not connected'}`;
+}
+function setRoute(r){
+  if (!ROUTES.some(x=>x[0]===r)) r='models';
+  S.route=r; renderNav(); renderView(); window.scrollTo(0,0);
+  if (location.hash.slice(1)!==r) history.replaceState(null,'','#'+r);
+}
+function renderView(){
+  const v = {connection:vConnection,models:vModels,playground:vPlayground,compare:vCompare,history:vHistory,blueprint:vBlueprint}[S.route];
+  $('#view').innerHTML = v();
+  if (S.route==='playground') scrollTranscript();
+}
+function toast(t){ const e=document.createElement('div'); e.className='toast'; e.textContent=t; document.body.appendChild(e); setTimeout(()=>e.remove(),2600) }
+
+/* ---------- Models ---------- */
+function typeChip(x){ return x.type==='chat'?'<span class="chip acc">Chat</span>':x.type==='embedding'?'<span class="chip ok">Embedding</span>':'<span class="chip warn">Image</span>' }
+function statusChip(x){ return x.status==='available'?'<span class="chip ok">Available</span>':x.status==='legacy'?'<span class="chip warn">Legacy</span>':'<span class="chip crit">Access not granted</span>' }
+function filteredModels(){
+  const f=S.filter, q=f.q.toLowerCase();
+  return DB.models.filter(x=>(!q||x.name.toLowerCase().includes(q)||x.id.toLowerCase().includes(q))&&(f.type==='all'||x.type===f.type)&&(f.prov==='all'||x.provider===f.prov)&&(!f.active||x.active));
+}
+function vModels(){
+  const list = filteredModels(), provs=[...new Set(DB.models.map(x=>x.provider))];
+  const nAct = DB.models.filter(x=>x.active).length;
+  const seg = (k,v,l)=>`<button data-act="ftype" data-v="${v}" aria-pressed="${S.filter.type===v}">${l}</button>`;
+  return `
+  <div class="pagehead">
+    <div><h1>Models</h1><p>Models synced from your AWS account. Switch on the ones you want available in the playground and in the ticket demo.</p></div>
+    <div class="actions">
+      <button class="btn" data-act="addmodel" data-mx="Button · opens BedrockModel_Edit (new object)">${I('plus')}Add manually</button>
+      <button class="btn primary" data-act="sync" ${S.syncing?'disabled':''} data-mx="Action button · ACT_Model_Sync">${S.syncing?'<span class="spin"></span>Syncing…':I('sync')+'Sync from AWS'}</button>
+    </div>
+  </div>
+  <section class="card" data-mx="Data grid 2 · DS_BedrockModel_List → BedrockModel">
+    <div class="toolbar">
+      <div class="grow" data-mx="Text filter"><input type="text" id="fq" placeholder="Search by name or model ID" value="${esc(S.filter.q)}" aria-label="Search models"></div>
+      <div class="seg" data-mx="Drop-down filter (enum ModelType)">${seg('type','all','All')}${seg('type','chat','Chat')}${seg('type','embedding','Embedding')}${seg('type','image','Image')}</div>
+      <select id="fprov" aria-label="Provider" data-mx="Drop-down filter · Provider"><option value="all">All providers</option>${provs.map(p=>`<option ${S.filter.prov===p?'selected':''}>${p}</option>`).join('')}</select>
+      <label style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px"><input type="checkbox" id="factive" ${S.filter.active?'checked':''}>Active only</label>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Active</th><th>Model</th><th>Type</th><th>Inference</th><th>Defaults</th><th>Status</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(x=>`
+        <tr>
+          <td><button class="switch" role="switch" aria-checked="${x.active}" aria-label="Active: ${esc(x.name)}" data-act="toggle" data-id="${esc(x.id)}"></button></td>
+          <td><div class="modelcell"><span class="av ${x.provider}">${x.provider[0]}</span><div><div class="name">${esc(x.name)}${x.isNew?'<span class="chip acc newbadge">New</span>':''}${x.manual?'<span class="chip newbadge">Manual</span>':''}</div><div class="mono sub">${esc(x.id)}</div></div></div></td>
+          <td>${typeChip(x)}<div class="sub" style="margin-top:3px">${esc(x.inMod)} → ${esc(x.outMod)}</div></td>
+          <td>${x.inference}</td>
+          <td class="mono">${x.type==='chat'?`temp ${x.temp} · ${x.max} tok`:x.type==='embedding'?`${x.dim} dims`:'—'}</td>
+          <td>${statusChip(x)}</td>
+          <td style="white-space:nowrap;text-align:right">
+            ${x.active&&x.type!=='image'?`<button class="btn sm ghost" data-act="try" data-id="${esc(x.id)}">${I('play',12)}Try</button>`:''}
+            <button class="btn sm" data-act="edit" data-id="${esc(x.id)}" aria-label="Edit ${esc(x.name)}">${I('edit',12)}Edit</button>
+          </td>
+        </tr>`).join(''):`<tr><td colspan="7"><div class="empty">No models match these filters.</div></td></tr>`}</tbody>
+    </table></div>
+    <div class="toolbar" style="border-top:1px solid var(--line);border-bottom:0"><span class="muted small">${list.length} of ${DB.models.length} models shown · ${nAct} active · last sync ${DB.syncCount?'just now':'2 days ago'}</span></div>
+  </section>`;
+}
+function openEdit(id){
+  const x = id ? JSON.parse(JSON.stringify(mdl(id))) : {origId:null,id:'',name:'',provider:'Anthropic',type:'chat',inference:'On-demand',active:true,temp:0.7,max:1024,topP:0.9,sys:'',dim:1024,normalize:true,manual:true};
+  x.origId = id||null; S.edit = x; drawEdit();
+}
+function drawEdit(){
+  const x=S.edit, isNew=!x.origId, chat=x.type==='chat', emb=x.type==='embedding';
+  $('#layer').innerHTML = `<div class="overlay" data-act="closeedit"><div class="modal" role="dialog" aria-modal="true" aria-label="Edit model" data-mx="Pop-up page · BedrockModel_Edit (data view → BedrockModel)">
+    <div class="hd"><h2>${isNew?'Add model manually':'Edit '+esc(x.name)}</h2><button class="btn sm ghost" data-act="closeedit" aria-label="Close">${I('x',14)}</button></div>
+    <div class="bd">
+      <div class="formgrid">
+        <div class="field"><label for="e_name">Display name</label><input type="text" id="e_name" value="${esc(x.name)}"></div>
+        <div class="field"><label for="e_id">Model ID or inference profile</label><input type="text" id="e_id" class="mono" value="${esc(x.id)}" ${isNew||x.manual?'':'readonly'}><span class="hint">${isNew||x.manual?'Paste any ID, for example a custom or cross-region profile.':'Synced from AWS, cannot be changed.'}</span></div>
+        <div class="field"><label for="e_prov">Provider</label><select id="e_prov">${['Anthropic','Amazon','Meta','Mistral','Cohere'].map(p=>`<option ${x.provider===p?'selected':''}>${p}</option>`).join('')}</select></div>
+        <div class="field"><label for="e_type">Type</label><select id="e_type" ${isNew?'':'disabled'}>${['chat','embedding','image'].map(p=>`<option value="${p}" ${x.type===p?'selected':''}>${p[0].toUpperCase()+p.slice(1)}</option>`).join('')}</select></div>
+      </div>
+      ${chat?`<div class="formgrid" data-mx="Range slider widgets · Temperature, TopP · number input · MaxTokens">
+        <div class="field"><label>Default temperature</label><div class="rangeline"><input type="range" id="e_temp" min="0" max="1" step="0.05" value="${x.temp}"><output>${x.temp}</output></div></div>
+        <div class="field"><label>Default top P</label><div class="rangeline"><input type="range" id="e_topp" min="0" max="1" step="0.05" value="${x.topP}"><output>${x.topP}</output></div></div>
+        <div class="field"><label for="e_max">Default max tokens</label><input type="number" id="e_max" min="1" max="8192" value="${x.max}"></div></div>
+        <div class="field"><label for="e_sys">Default system prompt</label><textarea id="e_sys" placeholder="Optional">${esc(x.sys||'')}</textarea></div>`:''}
+      ${emb?`<div class="formgrid"><div class="field"><label for="e_dim">Dimensions</label><select id="e_dim">${[256,512,1024,1536].map(d=>`<option ${x.dim===d?'selected':''}>${d}</option>`).join('')}</select><span class="hint">The pgvector table in the ticket demo expects 1024. Changing models means re-indexing.</span></div></div>`:''}
+      ${x.type==='image'?'<p class="muted">Image models can be registered, but the playground does not support them yet.</p>':''}
+    </div>
+    <div class="ft"><div>${x.manual&&!isNew?'<button class="btn danger" data-act="delmodel">Delete</button>':''}</div><div class="actions"><button class="btn" data-act="closeedit">Cancel</button><button class="btn primary" data-act="savemodel" data-mx="Save button · ACT_Model_Save">Save</button></div></div>
+  </div></div>`;
+}
+function readEdit(){
+  const x=S.edit, g=id=>document.getElementById(id);
+  x.name=g('e_name').value.trim(); if(!g('e_id').readOnly) x.id=g('e_id').value.trim(); x.provider=g('e_prov').value; if(!g('e_type').disabled) x.type=g('e_type').value;
+  if(x.type==='chat'){ x.temp=+g('e_temp').value; x.topP=+g('e_topp').value; x.max=+g('e_max').value||1024; x.sys=g('e_sys').value }
+  if(x.type==='embedding'&&g('e_dim')) x.dim=+g('e_dim').value;
+}
+
+/* ---------- Playground ---------- */
+const PRESETS = [['Summarise a ticket','Summarise this ticket in two sentences: Users cannot log in since the 2.4 update. The page loads blank on Safari.'],['Draft a reply','Write a polite reply to a customer whose refund is delayed by five days.'],['Classify','Classify as bug or feature request: "Please add dark mode to the dashboard."'],['Guardrail test','What is the admin password for the production database?']];
+function vPlayground(){
+  const p=S.pg, x=mdl(p.modelId), chat=x.type==='chat';
+  const chats=activeOf('chat'), embs=activeOf('embedding');
+  const opt = a=>a.map(o=>`<option value="${esc(o.id)}" ${o.id===p.modelId?'selected':''}>${esc(o.name)}</option>`).join('');
+  const side = `<aside class="card" data-mx="Data view · PlaygroundSession (non-persistent entity)"><div class="hd"><h2>Settings</h2><button class="btn sm ghost" data-act="pgdefaults" data-mx="Button · ACT_Playground_ResetToModelDefaults">Reset to defaults</button></div>
+    <div class="bd stack">
+      <div class="field" data-mx="Reference selector · PlaygroundSession_BedrockModel (IsActive = true)"><label for="pgModel">Model</label><select id="pgModel"><optgroup label="Chat">${opt(chats)}</optgroup><optgroup label="Embedding">${opt(embs)}</optgroup></select><span class="hint mono">${esc(x.id)}</span></div>
+      ${chat?`
+      <div class="field"><label for="pgSys">System prompt</label><textarea id="pgSys" placeholder="Optional instructions">${esc(p.system)}</textarea></div>
+      <div class="field" data-mx="Range slider widget · Temperature"><label>Temperature</label><div class="rangeline"><input type="range" id="pgTemp" min="0" max="1" step="0.05" value="${p.temperature}"><output id="pgTempO">${p.temperature}</output></div></div>
+      <div class="field" data-mx="Range slider widget · TopP"><label>Top P</label><div class="rangeline"><input type="range" id="pgTopP" min="0" max="1" step="0.05" value="${p.topP}"><output id="pgTopPO">${p.topP}</output></div></div>
+      <div class="field"><label for="pgMax">Max tokens</label><input type="number" id="pgMax" min="1" max="8192" value="${p.maxTokens}"><span class="hint">Try 40 to see a response cut off.</span></div>
+      <div class="field"><label for="pgStop">Stop sequences</label><input type="text" id="pgStop" placeholder="Comma separated" value="${esc(p.stop)}"></div>
+      <label style="display:flex;gap:10px;align-items:center;font-weight:600"><button class="switch" role="switch" aria-checked="${p.guardrail}" data-act="pgguard" aria-label="Apply guardrail"></button>Apply guardrail<span class="chip">${DB.config.guardrailId||'gr-demo123'} · ${DB.config.guardrailVersion}</span></label>
+      <label style="display:flex;gap:10px;align-items:center;font-weight:600"><button class="switch" role="switch" aria-checked="${p.keep}" data-act="pgkeep" aria-label="Keep conversation"></button>Keep conversation context</label>`
+      : `<div class="field"><label for="pgDim">Dimensions</label><select id="pgDim">${[256,512,1024,1536].map(d=>`<option ${p.embDim===d?'selected':''}>${d}</option>`).join('')}</select></div>
+         <p class="muted small">Embeddings use InvokeModel because the request format still differs per provider. Chat uses the Converse API for every model.</p>`}
+    </div></aside>`;
+  const main = chat ? `
+    <section class="card" style="display:flex;flex-direction:column">
+      <div class="hd"><h2>Conversation</h2><button class="btn sm" data-act="pgnew" data-mx="Button · ACT_Playground_NewChat">New chat</button></div>
+      <div class="transcript" id="transcript" data-mx="List view · PlaygroundMessage (non-persistent)">${transcript()}</div>
+      <div class="composer">
+        <div class="presets">${PRESETS.map((q,i)=>`<button class="btn sm" data-act="preset" data-i="${i}">${q[0]}</button>`).join('')}</div>
+        <textarea id="pgPrompt" placeholder="Write a prompt, then press Ctrl+Enter" data-mx="Text area · PlaygroundSession.Prompt">${esc(p.prompt)}</textarea>
+        <div class="row"><span class="muted small">${p.keep?'Earlier messages are sent with each request.':'Each prompt is sent on its own.'}</span>
+          <button class="btn primary" data-act="pgsend" ${p.busy?'disabled':''} data-mx="Button · ACT_Playground_Send (Java: Converse API)">${p.busy?'<span class="spin"></span>Sending…':I('play',12)+'Send'}</button></div>
+      </div>
+    </section>
+    <section class="card" data-mx="Tab container · RawRequest / RawResponse (read-only text areas)"><div class="tabs" role="tablist"><button role="tab" aria-selected="${p.tab==='req'}" data-act="pgtab" data-v="req">Request JSON</button><button role="tab" aria-selected="${p.tab==='res'}" data-act="pgtab" data-v="res">Response JSON</button></div>
+      <div class="bd">${p.last? `<pre class="code">${esc(JSON.stringify(p.tab==='req'?p.last.rawReq:p.last.rawRes,null,2)||'No response: the call failed before the model answered.')}</pre>` : '<p class="muted">Send a prompt to see the exact Converse API request and response.</p>'}</div></section>`
+  : `
+    <section class="card" data-mx="Data view · PlaygroundSession → Text areas · ACT_Playground_Embed">
+      <div class="hd"><h2>Embedding</h2></div>
+      <div class="bd stack">
+        <div class="field"><label for="pgEmb">Text A</label><textarea id="pgEmb">${esc(p.embText)}</textarea></div>
+        <div class="field"><label for="pgEmbB">Text B (optional, to compare similarity)</label><textarea id="pgEmbB">${esc(p.embTextB)}</textarea></div>
+        <div class="actions"><button class="btn primary" data-act="pgembed" ${p.busy?'disabled':''}>${p.busy?'<span class="spin"></span>Embedding…':'Create embedding'}</button></div>
+      </div></section>
+    ${p.emb?embResult(p.emb):''}`;
+  return `<div class="pagehead"><div><h1>Playground</h1><p>Try one model at a time. Change the settings, send a prompt and inspect exactly what went over the wire.</p></div></div><div class="pg">${side}<div class="stack" style="min-width:0">${main}</div></div>`;
+}
+function transcript(){
+  const p=S.pg;
+  if(!p.messages.length && !p.busy) return '<div class="empty" style="margin:auto">No messages yet. Pick a preset below or write your own prompt.</div>';
+  return p.messages.map(m=>{
+    if(m.role==='user') return `<div class="msg user"><span class="who">You</span><div class="bubble">${esc(m.text)}</div></div>`;
+    if(m.error) return `<div class="msg err"><span class="who">${esc(m.model)}</span><div class="bubble"><b>${esc(m.error.name)}</b>\n${esc(m.error.message)}</div></div>`;
+    return `<div class="msg"><span class="who">${esc(m.model)}</span><div class="bubble">${esc(m.text)}</div>
+      <div class="meta"><span><b>${(m.latency/1000).toFixed(2)} s</b></span><span>${m.inTok} in · <b>${m.outTok}</b> out tokens</span><span class="chip ${m.stop==='end_turn'?'ok':'warn'}">${m.stop}</span></div></div>`;
+  }).join('') + (p.busy?`<div class="msg"><span class="who">${esc(mdl(p.modelId).name)}</span><div class="typing"><i></i><i></i><i></i></div></div>`:'');
+}
+function scrollTranscript(){ const t=$('#transcript'); if(t) t.scrollTop=t.scrollHeight }
+function embResult(e){
+  const W=640,H=96,n=Math.min(64,e.vec.length), bw=W/n, mx=Math.max(...e.vec.slice(0,n).map(Math.abs));
+  const bars = e.vec.slice(0,n).map((v,i)=>{const h=Math.abs(v)/mx*(H/2-4);return `<rect x="${(i*bw+1).toFixed(1)}" y="${(v>=0?H/2-h:H/2).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" rx="1.5" fill="${v>=0?'var(--accent)':'var(--muted)'}"/>`}).join('');
+  const norm = Math.sqrt(e.vec.reduce((s,v)=>s+v*v,0));
+  return `<section class="card"><div class="hd"><h2>Result</h2></div><div class="bd stack">
+    <div class="kv"><div><span class="k">Dimensions</span><span class="v">${e.dim}</span></div><div><span class="k">L2 norm</span><span class="v">${norm.toFixed(3)}</span></div><div><span class="k">Tokens</span><span class="v">${e.inTok}</span></div><div><span class="k">Latency</span><span class="v">${e.latency} ms</span></div>${e.sim!==null?`<div><span class="k">Cosine similarity</span><span class="v">${e.sim.toFixed(3)}</span></div>`:''}</div>
+    <div><div class="lbl" style="margin-bottom:6px">First ${n} of ${e.dim} values</div><svg class="vecviz" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Bar chart of the first ${n} embedding values">${bars}<line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="var(--line-strong)" stroke-width="1"/></svg></div>
+    <div><div class="lbl" style="margin-bottom:6px">Request JSON</div><pre class="code">${esc(JSON.stringify(e.rawReq,null,2))}</pre></div>
+    <div><div class="lbl" style="margin-bottom:6px">Response JSON</div><pre class="code">${esc(JSON.stringify(e.rawRes,null,2))}</pre></div></div></section>`;
+}
+async function pgSend(){
+  const p=S.pg; if(p.busy) return;
+  const text=(document.getElementById('pgPrompt')?.value ?? p.prompt).trim(); if(!text) { toast('Write a prompt first'); return }
+  const x=mdl(p.modelId);
+  if(!p.keep) p.messages=[];
+  p.messages.push({role:'user',text}); p.prompt=''; p.busy=true; rerenderPg(true);
+  const history = p.messages.filter(m=>!m.error).map(m=>({role:m.role,text:m.text}));
+  const res = await Backend.invokeChat({modelId:p.modelId,system:p.system,messages:history,temperature:p.temperature,maxTokens:p.maxTokens,topP:p.topP,stop:p.stop.split(',').map(s=>s.trim()).filter(Boolean),guardrail:p.guardrail});
+  p.busy=false; p.last={rawReq:res.rawReq,rawRes:res.rawRes};
+  if(res.error){ p.messages.push({role:'assistant',model:x.name,error:res.error}); await Backend.addRun(run(now(),x.name,x.id,'chat',text,res.latency,0,0,'error',res.error.name)) }
+  else { p.messages.push({role:'assistant',model:x.name,text:res.text,latency:res.latency,inTok:res.inTok,outTok:res.outTok,stop:res.stop}); await Backend.addRun(run(now(),x.name,x.id,'chat',text,res.latency,res.inTok,res.outTok,'ok',res.stop)) }
+  if(S.route==='playground') rerenderPg(true);
+}
+function rerenderPg(focus){
+  if(S.route!=='playground') return; const pos=window.scrollY;
+  $('#view').innerHTML=vPlayground(); scrollTranscript(); window.scrollTo(0,pos); if(focus) document.getElementById('pgPrompt')?.focus({preventScroll:true});
+}
+async function pgEmbed(){
+  const p=S.pg; p.embText=$('#pgEmb').value; p.embTextB=$('#pgEmbB').value; if(!p.embText.trim()){toast('Enter some text first');return}
+  p.busy=true; rerenderPg();
+  const x=mdl(p.modelId); const res=await Backend.invokeEmbedding({modelId:p.modelId,text:p.embText,textB:p.embTextB.trim()||null,dimension:p.embDim});
+  p.busy=false; p.emb=res; await Backend.addRun(run(now(),x.name,x.id,'embedding',p.embText,res.latency,res.inTok,0,'ok','—')); rerenderPg();
+}
+function loadDefaults(){
+  const p=S.pg, x=mdl(p.modelId); if(!x) return;
+  if(x.type==='chat'){ p.temperature=x.temp; p.maxTokens=x.max; p.topP=x.topP; p.system=x.sys||p.system }
+  else { p.embDim=x.dim; p.emb=null }
+}
+
+/* ---------- Compare ---------- */
+function vCompare(){
+  const c=S.cmp, chats=activeOf('chat'), res=c.results, done=c.ids.filter(i=>res[i]&&res[i].status==='done');
+  const maxLat=Math.max(1,...done.map(i=>res[i].latency)), maxOut=Math.max(1,...done.map(i=>res[i].outTok));
+  const fastest = done.length>1 ? done.reduce((a,b)=>res[a].latency<res[b].latency?a:b) : null;
+  return `<div class="pagehead"><div><h1>Compare</h1><p>Send the same prompt and settings to up to four models and read the answers side by side.</p></div></div>
+  <section class="card" data-mx="Data view · CompareSession (non-persistent) + list of CompareResult"><div class="bd stack">
+    <div><div class="lbl" style="margin-bottom:8px">Models (${c.ids.length} of 4)</div><div class="pickgrid" data-mx="Custom: checkbox list over active chat BedrockModel (max 4 via validation)">${chats.map(x=>`<button class="pick" data-act="cmppick" data-id="${esc(x.id)}" aria-pressed="${c.ids.includes(x.id)}" ${!c.ids.includes(x.id)&&c.ids.length>=4?'disabled':''}><span class="av ${x.provider}" style="width:20px;height:20px;font-size:10px">${x.provider[0]}</span>${esc(x.name)}</button>`).join('')}</div></div>
+    <div class="formgrid">
+      <div class="field"><label for="cmpSys">System prompt</label><textarea id="cmpSys" style="min-height:60px" placeholder="Optional">${esc(c.system)}</textarea></div>
+      <div class="field"><label for="cmpPrompt">Prompt</label><textarea id="cmpPrompt" style="min-height:60px">${esc(c.prompt)}</textarea></div>
+    </div>
+    <div class="formgrid">
+      <div class="field"><label>Temperature</label><div class="rangeline"><input type="range" id="cmpTemp" min="0" max="1" step="0.05" value="${c.temperature}"><output id="cmpTempO">${c.temperature}</output></div></div>
+      <div class="field"><label for="cmpMax">Max tokens</label><input type="number" id="cmpMax" min="1" max="8192" value="${c.maxTokens}"></div>
+    </div>
+    <div class="actions"><button class="btn primary" data-act="cmprun" ${c.running||!c.ids.length?'disabled':''} data-mx="Button · ACT_Compare_RunAll (loops ACT_Playground_Send)">${c.running?'<span class="spin"></span>Running…':I('play',12)+'Run on '+c.ids.length+' model'+(c.ids.length===1?'':'s')}</button></div>
+  </div></section>
+  ${c.ids.some(i=>res[i])?`
+  <div class="cmpgrid" style="margin-top:16px" data-mx="List view · CompareResult (one card per model)">${c.ids.map(i=>{const x=mdl(i),r=res[i];return `
+    <article class="card cmpcard"><div class="hd"><div class="modelcell"><span class="av ${x.provider}">${x.provider[0]}</span><div><div class="name">${esc(x.name)}</div></div></div>${i===fastest?'<span class="chip acc">Fastest</span>':''}</div>
+      <div class="bd" ${r&&r.status==='error'?'style="color:var(--crit)"':''}>${!r||r.status==='running'?'<div class="typing"><i></i><i></i><i></i></div>':esc(r.status==='error'?r.error.name+'\n'+r.error.message:r.text)}</div>
+      ${r&&r.status!=='running'?`<div class="ft"><span><b style="color:var(--fg)">${(r.latency/1000).toFixed(2)} s</b></span><span>${r.inTok} in · ${r.outTok} out</span>${r.stop?`<span class="chip ${r.stop==='end_turn'?'ok':'warn'}">${r.stop}</span>`:''}</div>`:''}</article>`}).join('')}</div>`:''}
+  ${done.length>1?`<section class="card" style="margin-top:16px"><div class="hd"><h2>Side by side</h2></div><div class="bd">
+    <div class="lbl">Latency</div>${done.map(i=>`<div class="barrow"><span>${esc(mdl(i).name)}</span><div class="bar"><i style="width:${res[i].latency/maxLat*100}%"></i></div><span>${(res[i].latency/1000).toFixed(2)} s</span></div>`).join('')}
+    <div class="lbl" style="margin-top:12px">Output tokens</div>${done.map(i=>`<div class="barrow"><span>${esc(mdl(i).name)}</span><div class="bar"><i style="width:${res[i].outTok/maxOut*100}%"></i></div><span>${res[i].outTok}</span></div>`).join('')}
+  </div></section>`:''}`;
+}
+async function cmpRun(){
+  const c=S.cmp; c.prompt=$('#cmpPrompt').value; c.system=$('#cmpSys').value; c.maxTokens=+$('#cmpMax').value||512;
+  if(!c.prompt.trim()){toast('Write a prompt first');return}
+  c.running=true; c.results={}; c.ids.forEach(i=>c.results[i]={status:'running'}); renderView();
+  await Promise.all(c.ids.map(async i=>{
+    const x=mdl(i), r=await Backend.invokeChat({modelId:i,system:c.system,messages:[{role:'user',text:c.prompt}],temperature:c.temperature,maxTokens:c.maxTokens,topP:0.9,stop:[],guardrail:false});
+    c.results[i]= r.error?{status:'error',error:r.error,latency:r.latency,inTok:0,outTok:0}:{status:'done',text:r.text,latency:r.latency,inTok:r.inTok,outTok:r.outTok,stop:r.stop};
+    await Backend.addRun(run(now(),x.name,i,'chat','[Compare] '+c.prompt,r.latency,r.inTok||0,r.outTok||0,r.error?'error':'ok',r.error?r.error.name:r.stop));
+    if(S.route==='compare') renderView();
+  }));
+  c.running=false; if(S.route==='compare') renderView();
+}
+
+/* ---------- History ---------- */
+function vHistory(){
+  const q=S.hist.q.toLowerCase(), rows=DB.runs.filter(r=>!q||r.prompt.toLowerCase().includes(q)||r.modelName.toLowerCase().includes(q));
+  return `<div class="pagehead"><div><h1>Run history</h1><p>Every playground and compare run is saved so you can reopen a prompt later.</p></div>
+    <div class="actions"><button class="btn danger" data-act="clearruns" ${DB.runs.length?'':'disabled'} data-mx="Button · ACT_TestRun_DeleteAll (confirmation dialog)">Clear history</button></div></div>
+  <section class="card" data-mx="Data grid 2 · TestRun (sort: CreatedDate desc)">
+    <div class="toolbar"><div class="grow"><input type="text" id="hq" placeholder="Search prompt or model" value="${esc(S.hist.q)}" aria-label="Search history"></div></div>
+    <div class="tablewrap"><table><thead><tr><th>When</th><th>Model</th><th>Prompt</th><th>Latency</th><th>Tokens in / out</th><th>Result</th><th></th></tr></thead><tbody>
+    ${rows.length?rows.map(r=>`<tr>
+      <td class="sub" style="white-space:nowrap">${ago(r.ts)}</td><td><div class="name">${esc(r.modelName)}</div><div class="sub">${r.type}</div></td>
+      <td style="max-width:360px;overflow-wrap:anywhere">${esc(r.prompt.length>90?r.prompt.slice(0,87)+'…':r.prompt)}</td>
+      <td class="mono">${r.latency} ms</td><td class="mono">${r.inTok} / ${r.outTok}</td>
+      <td><span class="chip ${r.status==='ok'?'ok':'crit'}">${r.status==='ok'?r.stop:r.stop}</span></td>
+      <td style="text-align:right"><button class="btn sm" data-act="reopen" data-id="${r.id}">Open</button></td></tr>`).join(''):`<tr><td colspan="7"><div class="empty">${DB.runs.length?'No runs match.':'No runs yet. Send a prompt in the playground.'}</div></td></tr>`}
+    </tbody></table></div></section>`;
+}
+
+/* ---------- Connection ---------- */
+function vConnection(){
+  const c=DB.config, t=S.connTest;
+  const rc=(v,t1,t2)=>`<button class="rc" data-act="auth" data-v="${v}" aria-pressed="${c.authMode===v}"><b>${t1}</b><span>${t2}</span></button>`;
+  return `<div class="pagehead"><div><h1>Connection</h1><p>One connection for every model. Region and credentials are set once here.</p></div>
+    <div class="actions"><button class="btn" data-act="conntest" ${S.testing?'disabled':''} data-mx="Button · ACT_Connection_Test">${S.testing?'<span class="spin"></span>Testing…':'Test connection'}</button><button class="btn primary" data-act="connsave" data-mx="Save button · ACT_Config_Save">Save</button></div></div>
+  <div class="stack">
+  <section class="card" data-mx="Data view · DS_Config → Config"><div class="hd"><h2>Authentication</h2></div><div class="bd stack">
+    <div class="radiocards" data-mx="Radio buttons · enum ENUM_AuthMode">${rc('webidentity','Web identity (IRSA)','For the cluster. Reads the token file and assumes the IAM role.')}${rc('keys','Access keys','For local development with a key pair.')}${rc('chain','Default provider chain','Environment, profile or instance role.')}</div>
+    ${c.authMode==='webidentity'?`<div class="formgrid"><div class="field"><label for="c_role">Role ARN</label><input type="text" id="c_role" class="mono" value="${esc(c.roleArn)}"></div><div class="field"><label for="c_tok">Token file</label><input type="text" id="c_tok" class="mono" value="${esc(c.tokenFile)}"><span class="hint">Usually injected by the platform as AWS_WEB_IDENTITY_TOKEN_FILE.</span></div></div>`:''}
+    ${c.authMode==='keys'?`<div class="formgrid"><div class="field"><label for="c_ak">Access key ID</label><input type="text" id="c_ak" class="mono" value="${esc(c.accessKeyId)}" autocomplete="off"></div><div class="field"><label for="c_sk">Secret access key</label><input type="password" id="c_sk" value="${esc(c.secretKey)}" autocomplete="new-password"><span class="hint">Mockup only: stored in the browser tab, never sent anywhere.</span></div></div>`:''}
+  </div></section>
+  <section class="card"><div class="hd"><h2>Region and safety</h2></div><div class="bd formgrid">
+    <div class="field"><label for="c_reg">Region</label><select id="c_reg">${['eu-central-1','eu-west-1','eu-west-3','us-east-1','us-west-2'].map(r=>`<option ${c.region===r?'selected':''}>${r}</option>`).join('')}</select></div>
+    <div class="field"><label for="c_ep">Endpoint override</label><input type="text" id="c_ep" class="mono" placeholder="Leave empty for AWS" value="${esc(c.endpoint)}"><span class="hint">For the local mock, use http://localhost:8787.</span></div>
+    <div class="field"><label for="c_gid">Guardrail ID</label><input type="text" id="c_gid" class="mono" placeholder="Optional" value="${esc(c.guardrailId)}"></div>
+    <div class="field"><label for="c_gv">Guardrail version</label><input type="text" id="c_gv" class="mono" value="${esc(c.guardrailVersion)}"></div>
+  </div></section>
+  ${t||S.testing?`<section class="card"><div class="hd"><h2>Connection test</h2>${t?`<span class="chip ${t.ok?'ok':'crit'}">${t.ok?'Passed · '+t.latencyMs+' ms':'Failed'}</span>`:''}</div><div class="bd"><div class="checks">${S.testing?'<div><span class="spin"></span>Checking credentials, identity and model access…</div>':t.steps.map(s=>`<div><span style="color:var(--${s.ok?'ok':'crit'})">${I(s.ok?'check':'x')}</span><span>${esc(s.text)}</span></div>`).join('')}</div></div></section>`:''}
+  </div>`;
+}
+function readConn(){
+  const g=id=>document.getElementById(id), c={};
+  if(g('c_role')) c.roleArn=g('c_role').value; if(g('c_tok')) c.tokenFile=g('c_tok').value;
+  if(g('c_ak')) c.accessKeyId=g('c_ak').value; if(g('c_sk')) c.secretKey=g('c_sk').value;
+  c.region=g('c_reg').value; c.endpoint=g('c_ep').value.trim(); c.guardrailId=g('c_gid').value.trim(); c.guardrailVersion=g('c_gv').value.trim();
+  return c;
+}
+
+/* ---------- Mendix blueprint ---------- */
+function vBlueprint(){
+  const T=(h,rows)=>`<div class="card"><div class="tablewrap"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  return `<div class="bp"><div class="pagehead"><div><h1>Mendix blueprint</h1><p>How this mockup becomes the real module. Turn on “Show Mendix mapping” in the top bar to see the same information on each block.</p></div></div>
+  <div class="card"><div class="bd stack"><b>How the switch from mockup to real works</b>
+    <p class="muted">The UI above only talks to one object, <code>Backend</code>. Each method on it is one microflow, and each object it returns is one entity. When the real module exists, the pages bind to those entities and buttons call those microflows. The mockup's fake responses are replaced by <code>JA_BedrockConverse</code> and <code>JA_BedrockInvokeModel_Embeddings</code>. Nothing else about the page changes.</p></div></div>
+  <h2>Pages</h2>
+  ${T(['Mockup view','Mendix page','Main widgets'],[
+    ['Connection','<code>Connection</code>','Data view (Config), radio buttons for auth mode, text boxes, test result list'],
+    ['Models','<code>Model_Overview</code> + pop-up <code>BedrockModel_Edit</code>','Data grid 2 with filters, switch on IsActive, action buttons'],
+    ['Playground','<code>Playground</code>','Data view (PlaygroundSession), reference selector, range sliders, list view for messages, tab container'],
+    ['Compare','<code>Compare</code>','Data view (CompareSession), list view of CompareResult cards'],
+    ['Run history','<code>TestRun_Overview</code>','Data grid 2 on TestRun'],
+  ])}
+  <h2>Entities</h2>
+  ${T(['Entity','Persistent','Key attributes'],[
+    ['<code>Config</code> (exists)','Yes','AuthMode (new), Region, RoleArn, TokenFile, EndpointOverride, GuardrailId, GuardrailVersion'],
+    ['<code>BedrockModel</code> (new)','Yes','ModelId, DisplayName, Provider, ModelType (Chat / Embedding / Image), InferenceType, Status, IsActive, IsManual, DefaultTemperature, DefaultTopP, DefaultMaxTokens, DefaultSystemPrompt, Dimension, LastSyncedAt'],
+    ['<code>TestRun</code> (new)','Yes','Prompt, Response, LatencyMs, InputTokens, OutputTokens, StopReason, Status, RawRequest, RawResponse; association to BedrockModel'],
+    ['<code>PlaygroundSession</code> (new)','No','SystemPrompt, Prompt, Temperature, TopP, MaxTokens, StopSequences, UseGuardrail, KeepContext; association to BedrockModel'],
+    ['<code>PlaygroundMessage</code> (new)','No','Role, Text, LatencyMs, InputTokens, OutputTokens, StopReason, ErrorName, ErrorMessage'],
+    ['<code>CompareSession</code> / <code>CompareResult</code> (new)','No','CompareSession: Prompt, SystemPrompt, Temperature, MaxTokens, selected models. CompareResult: Text, metrics, Status'],
+  ])}
+  <h2>Microflows behind the mockup's Backend</h2>
+  ${T(['Backend method','Microflow','Replaces mockup logic with'],[
+    ['<code>getConfig / saveConfig</code>','<code>DS_Config</code> (exists), <code>ACT_Config_Save</code> (exists)','Same, with new attributes'],
+    ['<code>testConnection</code>','<code>ACT_Connection_Test</code>','Java: STS GetCallerIdentity + ListFoundationModels'],
+    ['<code>syncModels</code>','<code>ACT_Model_Sync</code>','<code>JA_ListFoundationModels</code> (exists) + create or update BedrockModel by ModelId, keep IsActive'],
+    ['<code>setActive</code>','<code>ACT_Model_ToggleActive</code>','Commit; refuse when Status = NoAccess'],
+    ['<code>saveModel / deleteModel</code>','<code>ACT_Model_Save</code>, <code>ACT_Model_Delete</code>','Standard commit and delete, manual models only'],
+    ['<code>invokeChat</code>','<code>ACT_Playground_Send</code>','New <code>JA_BedrockConverse</code> (Converse API); creates PlaygroundMessage and TestRun'],
+    ['<code>invokeEmbedding</code>','<code>ACT_Playground_Embed</code>','Existing <code>JA_BedrockInvokeModel_Embeddings</code>, dispatching on provider'],
+    ['<code>addRun / listRuns / clearRuns</code>','<code>ACT_TestRun_Create</code>, data grid, <code>ACT_TestRun_DeleteAll</code>','Standard create and delete'],
+  ])}
+  <h2>Suggested build order</h2>
+  <div class="card"><div class="bd"><ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+    <li>Entities and enums, plus the Connection and Models pages with Sync. No new Java except changing nothing in the existing actions.</li>
+    <li><code>JA_BedrockConverse</code> and the Playground page.</li>
+    <li>TestRun history, then Compare (a loop over the Playground microflow).</li>
+    <li>Point the ticket demo's chat and embedding calls at active BedrockModel records.</li>
+    <li>Update the local mock with a Converse route.</li>
+  </ol></div></div></div>`;
+}
+
+/* ---------- events ---------- */
+const A = {
+  go:t=>setRoute(t.dataset.route),
+  mx:()=>{S.mx=!S.mx; document.body.classList.toggle('mx',S.mx); $('#mxToggle').setAttribute('aria-checked',S.mx)},
+  ftype:t=>{S.filter.type=t.dataset.v; renderView()},
+  async sync(){ S.syncing=true; renderView(); const r=await Backend.syncModels(); S.syncing=false; renderView(); toast(r.added?`Synced: ${r.added} new models, ${r.changed} updated`:'Already up to date. No changes found.') },
+  async toggle(t){ const id=t.dataset.id, on=t.getAttribute('aria-checked')!=='true', r=await Backend.setActive(id,on); if(r.error){toast(r.error);return} renderView(); if(!on && S.pg.modelId===id){ S.pg.modelId=(activeOf('chat')[0]||{}).id; loadDefaults() } },
+  addmodel:()=>openEdit(null), edit:t=>openEdit(t.dataset.id),
+  closeedit:(t,e)=>{ if(!t.classList.contains('overlay') || e.target===t) { $('#layer').innerHTML=''; S.edit=null } },
+  async savemodel(){ readEdit(); const x=S.edit; if(!x.name||!x.id){toast('Name and model ID are required');return} if(!x.origId&&DB.models.some(q=>q.id===x.id)){toast('A model with this ID already exists');return} await Backend.saveModel(x); $('#layer').innerHTML=''; S.edit=null; renderView(); toast('Model saved') },
+  async delmodel(){ await Backend.deleteModel(S.edit.origId); $('#layer').innerHTML=''; S.edit=null; renderView(); toast('Model deleted') },
+  try:t=>{ S.pg.modelId=t.dataset.id; loadDefaults(); S.pg.messages=[]; S.pg.last=null; setRoute('playground') },
+  pgdefaults:()=>{ loadDefaults(); rerenderPg(); toast('Settings reset to model defaults') },
+  pgguard:()=>{S.pg.guardrail=!S.pg.guardrail; rerenderPg()}, pgkeep:()=>{S.pg.keep=!S.pg.keep; rerenderPg()},
+  pgnew:()=>{S.pg.messages=[]; S.pg.last=null; rerenderPg(true)},
+  pgtab:t=>{S.pg.tab=t.dataset.v; rerenderPg()},
+  preset:t=>{S.pg.prompt=PRESETS[+t.dataset.i][1]; rerenderPg(true)},
+  pgsend:()=>pgSend(), pgembed:()=>pgEmbed(),
+  cmppick:t=>{ const c=S.cmp, id=t.dataset.id; c.ids = c.ids.includes(id)?c.ids.filter(i=>i!==id):[...c.ids,id]; c.prompt=$('#cmpPrompt').value; c.system=$('#cmpSys').value; renderView() },
+  cmprun:()=>cmpRun(),
+  async clearruns(){ await Backend.clearRuns(); renderView(); toast('History cleared') },
+  reopen:t=>{ const r=DB.runs.find(q=>q.id===t.dataset.id), x=mdl(r.modelId); if(!x||!x.active){toast('This model is not active any more');return}
+    S.pg.modelId=x.id; loadDefaults(); S.pg.messages=[]; S.pg.last=null; if(x.type==='chat') S.pg.prompt=r.prompt.replace('[Compare] ',''); else S.pg.embText=r.prompt; setRoute('playground') },
+  auth:t=>{ Object.assign(DB.config,readConn()); DB.config.authMode=t.dataset.v; S.connTest=null; renderView() },
+  async conntest(){ Object.assign(DB.config,readConn()); S.testing=true; S.connTest=null; renderView(); S.connTest=await Backend.testConnection(); S.testing=false; renderTop(); renderView() },
+  async connsave(){ await Backend.saveConfig(readConn()); renderTop(); toast('Connection saved') },
+};
+document.addEventListener('click',e=>{ const t=e.target.closest('[data-act]'); if(!t) return; const f=A[t.dataset.act]; if(f){ if(t.tagName==='A') e.preventDefault(); f(t,e) } });
+document.addEventListener('input',e=>{
+  const id=e.target.id, v=e.target.value, p=S.pg;
+  if(id==='fq'){ S.filter.q=v; renderView(); const f=$('#fq'); f.focus(); f.setSelectionRange(v.length,v.length) }
+  else if(id==='hq'){ S.hist.q=v; renderView(); const f=$('#hq'); f.focus(); f.setSelectionRange(v.length,v.length) }
+  else if(id==='pgSys') p.system=v; else if(id==='pgPrompt') p.prompt=v; else if(id==='pgStop') p.stop=v;
+  else if(id==='pgMax') p.maxTokens=+v||1; else if(id==='pgEmb') p.embText=v; else if(id==='pgEmbB') p.embTextB=v;
+  else if(id==='pgTemp'){ p.temperature=+v; $('#pgTempO').textContent=v } else if(id==='pgTopP'){ p.topP=+v; $('#pgTopPO').textContent=v }
+  else if(id==='cmpTemp'){ S.cmp.temperature=+v; $('#cmpTempO').textContent=v }
+  else if(id==='e_temp'||id==='e_topp'){ e.target.nextElementSibling.textContent=v }
+});
+document.addEventListener('change',e=>{
+  const id=e.target.id, v=e.target.value;
+  if(id==='fprov'){ S.filter.prov=v; renderView() } else if(id==='factive'){ S.filter.active=e.target.checked; renderView() }
+  else if(id==='pgModel'){ S.pg.modelId=v; loadDefaults(); renderView(); toast('Settings set to '+mdl(v).name+' defaults') }
+  else if(id==='pgDim'){ S.pg.embDim=+v }
+  else if(id==='e_type'){ readEdit(); drawEdit() }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && S.edit){ $('#layer').innerHTML=''; S.edit=null }
+  if(e.key==='Enter' && (e.ctrlKey||e.metaKey) && e.target.id==='pgPrompt'){ e.preventDefault(); pgSend() }
+});
+window.addEventListener('hashchange',()=>setRoute(location.hash.slice(1)));
+renderTop(); setRoute(location.hash.slice(1)||'models');
+</script>

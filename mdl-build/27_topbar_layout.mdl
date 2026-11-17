@@ -1,0 +1,34 @@
+-- Top bar only layout for the AWS Bedrock demo: logo + menu bar on top, no left side navigation.
+create or modify layout AWSBedrockImplementation.Layout_TopBar (
+  layouttype: 'Responsive',
+  class: 'layout-atlas layout-atlas-responsive-topbar bedrock-layout-topbar'
+) {
+  scrollcontainer layoutContainer {
+    region top (Class: 'region-topbar') {
+      layoutgrid layoutGrid1 {
+        row {
+          column (DesktopWidth: 12, TabletWidth: 12, PhoneWidth: 12) {
+            container container2 (Class: 'topbar-content') {
+              layoutgrid layoutGrid2 (Class: 'navbar-brand') {
+                row (VerticalAlignment: Center) {
+                  column (DesktopWidth: AutoFit, TabletWidth: AutoFit, PhoneWidth: AutoFit) {
+                    image staticImage1 (Image: 'Atlas_Core.Layout.logo', Responsive: false)
+                  }
+                  column (DesktopWidth: AutoFill) {
+                    menubar menuBar1 (Profile: 'Responsive', DesignProperties: ('Hide icons': on))
+                  }
+                  column (DesktopWidth: AutoFit, TabletWidth: AutoFit, PhoneWidth: AutoFit) {
+                    snippetcall snippetCall2 (Snippet: Atlas_Core.LanguageSelectorWidget)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    region center (Class: 'region-content') {
+      placeholder Main
+    }
+  }
+};

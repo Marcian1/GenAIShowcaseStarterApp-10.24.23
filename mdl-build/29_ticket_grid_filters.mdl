@@ -1,0 +1,4 @@
+-- Id and Changed filters forced very wide header cells and made the columns overlap; the subject, category and status filters are enough.
+alter snippet AWSBedrockImplementation.SNIP_Tickets {
+  drop nfTicketId, dfChanged;
+};

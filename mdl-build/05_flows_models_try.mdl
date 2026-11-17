@@ -1,0 +1,246 @@
+mdl 1;
+
+/** Opens the pop-up to add a model. */
+create or modify microflow AWSBedrockImplementation.ACT_BedrockModel_New ()
+folder 'BedrockModel'
+begin
+  $BedrockModel = create AWSBedrockImplementation.BedrockModel ();
+  show page AWSBedrockImplementation.BedrockModel_Edit(BedrockModel = $BedrockModel);
+  return;
+end;
+
+/** Opens the pop-up to edit a model. */
+create or modify microflow AWSBedrockImplementation.ACT_BedrockModel_Edit (
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'BedrockModel'
+begin
+  show page AWSBedrockImplementation.BedrockModel_Edit(BedrockModel = $BedrockModel);
+  return;
+end;
+
+/** Saves a model after checking that its model ID is unique, then closes the pop-up. */
+create or modify microflow AWSBedrockImplementation.ACT_BedrockModel_Save (
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'BedrockModel'
+begin
+  retrieve $SameModelId from AWSBedrockImplementation.BedrockModel
+    where ModelId = $BedrockModel/ModelId and id != $BedrockModel;
+  $SameModelIdCount = count $SameModelId;
+  if $SameModelIdCount > 0 then
+    validation feedback $BedrockModel/ModelId message 'A model with this ID already exists';
+    return;
+  end if;
+  commit $BedrockModel refresh;
+  close page;
+  return;
+end;
+
+/** Deletes a model unless it is the chat or embedding model in use. */
+create or modify microflow AWSBedrockImplementation.ACT_BedrockModel_Delete (
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'BedrockModel'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  if $ChatModel = $BedrockModel or $EmbeddingModel = $BedrockModel then
+    show message '{1} is in use as the chat or embedding model. Pick another model first.' type Error with ({1} = $BedrockModel/Name) blocking;
+    return;
+  end if;
+  delete $BedrockModel refresh;
+  return;
+end;
+
+/** Fills the try-out settings from the defaults of the selected model and clears the previous result. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  retrieve $BedrockModel from $TrySession/AWSBedrockImplementation.TrySession_BedrockModel;
+  change $TrySession (
+    MaxTokens = $BedrockModel/MaxTokens,
+    Effort = $BedrockModel/Effort,
+    Dimension = $BedrockModel/Dimension,
+    InputType = $BedrockModel/InputType,
+    Truncate = $BedrockModel/Truncate,
+    Normalize = $BedrockModel/Normalize,
+    IsChat = ($BedrockModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude),
+    HasResult = false,
+    Output = empty,
+    VectorPreview = empty,
+    RawRequest = empty,
+    RawResponse = empty
+  );
+  return;
+end;
+
+/** Opens the try-out pop-up for a model. */
+create or modify microflow AWSBedrockImplementation.ACT_BedrockModel_Try (
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'Try'
+begin
+  $TrySession = create AWSBedrockImplementation.TrySession (
+    Input = 'Explain in two sentences what a vector embedding is.',
+    TrySession_BedrockModel = $BedrockModel
+  );
+  call microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults(TrySession = $TrySession);
+  show page AWSBedrockImplementation.BedrockModel_Try(TrySession = $TrySession);
+  return;
+end;
+
+/** On change of the model in the try-out pop-up: loads that model's defaults. */
+create or modify microflow AWSBedrockImplementation.ACT_TrySession_ModelChanged (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  call microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults(TrySession = $TrySession);
+  return;
+end;
+
+/** Sends the prompt to a Claude model and stores the answer, token counts and raw JSON on the try-out. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_SendClaude (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  $AnthropicRequest = create AWSBedrockImplementation.AnthropicRequest (
+    Anthropic_version = 'bedrock-2023-05-31',
+    Max_tokens = $TrySession/MaxTokens,
+    System = if $TrySession/System = empty or trim($TrySession/System) = '' then 'You are a helpful assistant.' else $TrySession/System
+  );
+  $Thinking = create AWSBedrockImplementation.Thinking (_type = 'adaptive', Thinking_AnthropicRequest = $AnthropicRequest);
+  $OutputConfig = create AWSBedrockImplementation.Output_config (Effort = getKey($TrySession/Effort), Output_config_AnthropicRequest = $AnthropicRequest);
+  $Messages = create AWSBedrockImplementation.Messages (Messages_AnthropicRequest = $AnthropicRequest);
+  $Message = create AWSBedrockImplementation.Message (Message_Messages = $Messages, Role = 'user', Content = $TrySession/Input);
+  $Request = export to mapping AWSBedrockImplementation.EXM_AnthropicRequest($AnthropicRequest);
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config);
+  $AnthropicResponse = import from mapping AWSBedrockImplementation.IMM_AnthropicResponse($Response);
+  retrieve $Content from $AnthropicResponse/AWSBedrockImplementation.Content_AnthropicResponse;
+  retrieve $ContentItemList from $Content/AWSBedrockImplementation.ContentItem_Content;
+  declare $Answer String = '';
+  loop $ContentItem in $ContentItemList
+  begin
+    if $ContentItem/_type = 'text' then
+      set $Answer = $Answer + $ContentItem/Text;
+    end if;
+  end loop;
+  retrieve $Usage from $AnthropicResponse/AWSBedrockImplementation.Usage_AnthropicResponse;
+  change $TrySession (
+    Output = $Answer,
+    InputTokens = $Usage/Input_tokens,
+    OutputTokens = $Usage/Output_tokens,
+    RawRequest = $Request,
+    RawResponse = $Response
+  );
+  return;
+end;
+
+/** Embeds the text with a Cohere Embed model and stores the vector preview and raw JSON on the try-out. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_SendCohere (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  $CohereRequest = create AWSBedrockImplementation.CohereRequest (
+    Input_type = getKey($TrySession/InputType),
+    Output_dimension = $TrySession/Dimension,
+    Max_tokens = 128000,
+    Truncate = getKey($TrySession/Truncate)
+  );
+  $Texts = create AWSBedrockImplementation.Texts (Texts_CohereRequest = $CohereRequest);
+  $Text = create AWSBedrockImplementation.Text (Text_Texts = $Texts, Value = $TrySession/Input);
+  $EmbeddingTypes = create AWSBedrockImplementation.Embedding_types (Embedding_types_CohereRequest = $CohereRequest);
+  $EmbeddingType = create AWSBedrockImplementation.Embedding_type (Value = 'float', Embedding_type_Embedding_types = $EmbeddingTypes);
+  $Request = export to mapping AWSBedrockImplementation.EXM_Cohere_Request($CohereRequest);
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel_Embeddings(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config);
+  $Summary = call java action AWSBedrockImplementation.JA_EmbeddingResponse_Summary(ResponseJson = $Response, PreviewCount = 8);
+  change $TrySession (
+    Dimension = parseInteger(substring($Summary, 0, find($Summary, '|'))),
+    VectorPreview = substring($Summary, find($Summary, '|') + 1),
+    RawRequest = $Request,
+    RawResponse = $Response
+  );
+  return;
+end;
+
+/** Embeds the text with Titan Text Embeddings V2 and stores the vector preview and raw JSON on the try-out. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_SendTitan (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  $TitanRequest = create AWSBedrockImplementation.TitanEmbeddingsV2Request (
+    InputText = $TrySession/Input,
+    Dimensions = $TrySession/Dimension,
+    Normalize = $TrySession/Normalize
+  );
+  $EmbeddingTypes = create AWSBedrockImplementation.EmbeddingTypes (EmbeddingTypes_TitanEmbeddingsV2Request = $TitanRequest);
+  $EmbeddingType = create AWSBedrockImplementation.EmbeddingType (Value = 'float', EmbeddingType_EmbeddingTypes = $EmbeddingTypes);
+  $Request = export to mapping AWSBedrockImplementation.EXM_TitanEmbeddingsV2_Request($TitanRequest);
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel_Embeddings(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config);
+  $Summary = call java action AWSBedrockImplementation.JA_EmbeddingResponse_Summary(ResponseJson = $Response, PreviewCount = 8);
+  change $TrySession (
+    Dimension = parseInteger(substring($Summary, 0, find($Summary, '|'))),
+    VectorPreview = substring($Summary, find($Summary, '|') + 1),
+    RawRequest = $Request,
+    RawResponse = $Response
+  );
+  return;
+end;
+
+/** Picks the request builder that matches the family of the selected model. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_Dispatch (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  case $BedrockModel/Family
+    when Claude then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendClaude(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Cohere then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendCohere(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Titan then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendTitan(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when (empty) then
+      return;
+  end case;
+  return;
+end;
+
+/** The Send button of the try-out pop-up: calls the model, measures the time and shows the result. */
+create or modify microflow AWSBedrockImplementation.ACT_TrySession_Send (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  if $TrySession/Input = empty or trim($TrySession/Input) = '' then
+    validation feedback $TrySession/Input message 'Enter some text first';
+    return;
+  end if;
+  retrieve $BedrockModel from $TrySession/AWSBedrockImplementation.TrySession_BedrockModel;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  declare $StartedAt DateTime = [%CurrentDateTime%];
+  call microflow AWSBedrockImplementation.SUB_TrySession_Dispatch(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config) on error without rollback begin
+    show message 'The request failed: {1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  change $TrySession (
+    Seconds = millisecondsBetween($StartedAt, [%CurrentDateTime%]) div 1000,
+    HasResult = true
+  ) refresh;
+  return;
+end;

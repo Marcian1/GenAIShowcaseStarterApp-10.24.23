@@ -1,0 +1,31 @@
+mdl 1;
+
+alter entity AWSBedrockImplementation.TrySession add attribute ModelFamily: Enumeration(AWSBedrockImplementation.ENUM_ModelFamily) default AWSBedrockImplementation.ENUM_ModelFamily.Claude;
+grant read *, write * on entity AWSBedrockImplementation.TrySession to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults;
+
+/** Fills the try-out settings from the defaults of the selected model and clears the previous result. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  retrieve $BedrockModel from $TrySession/AWSBedrockImplementation.TrySession_BedrockModel;
+  change $TrySession (
+    ModelFamily = $BedrockModel/Family,
+    MaxTokens = $BedrockModel/MaxTokens,
+    Effort = $BedrockModel/Effort,
+    Dimension = $BedrockModel/Dimension,
+    InputType = $BedrockModel/InputType,
+    Truncate = $BedrockModel/Truncate,
+    Normalize = $BedrockModel/Normalize,
+    IsChat = ($BedrockModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude),
+    HasResult = false,
+    Output = empty,
+    VectorPreview = empty,
+    RawRequest = empty,
+    RawResponse = empty
+  ) refresh;
+  return;
+end;

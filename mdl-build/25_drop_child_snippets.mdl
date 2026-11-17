@@ -1,0 +1,7 @@
+mdl 1;
+drop snippet AWSBedrockImplementation.SNIP_SetupStatus;
+drop snippet AWSBedrockImplementation.SNIP_Connections;
+drop snippet AWSBedrockImplementation.SNIP_Models;
+drop snippet AWSBedrockImplementation.SNIP_Tickets;
+drop snippet AWSBedrockImplementation.SNIP_SearchAndAsk;
+drop snippet AWSBedrockImplementation.SNIP_AskTickets;

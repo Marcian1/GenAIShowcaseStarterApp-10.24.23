@@ -1,0 +1,6 @@
+mdl 1;
+alter enumeration AWSBedrockImplementation.ENUM_Ticket_Status modify value Open caption 'Open';
+alter enumeration AWSBedrockImplementation.ENUM_Ticket_Status modify value Closed caption 'Closed';
+alter enumeration AWSBedrockImplementation.ENUM_Ticket_Status modify value In_Progress caption 'In Progress';
+alter enumeration AWSBedrockImplementation.ENUM_Ticket_Category modify value Feature caption 'Feature';
+alter enumeration AWSBedrockImplementation.ENUM_Ticket_Category modify value Bug caption 'Bug';

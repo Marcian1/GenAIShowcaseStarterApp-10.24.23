@@ -1,0 +1,13 @@
+mdl 1;
+create page AWSBedrockImplementation.BedrockModel_Edit (
+  Title: 'Model',
+  Layout: Atlas_Core.PopupLayout,
+  Params: ( $BedrockModel: AWSBedrockImplementation.BedrockModel )
+) {
+};
+create page AWSBedrockImplementation.BedrockModel_Try (
+  Title: 'Try a model',
+  Layout: Atlas_Core.PopupLayout,
+  Params: ( $TrySession: AWSBedrockImplementation.TrySession )
+) {
+};

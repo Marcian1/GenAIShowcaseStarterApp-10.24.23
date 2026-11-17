@@ -1,0 +1,3 @@
+-- TEMPORARY, local testing only. Revert with bedrock-local-emulator/disable_test_user.mdl
+alter app security ( EnableDemoUsers: true );
+create or modify demo user 'MockTester' ( Password: 'MockTest-2026-Bedrock1', UserRoles: (User) );

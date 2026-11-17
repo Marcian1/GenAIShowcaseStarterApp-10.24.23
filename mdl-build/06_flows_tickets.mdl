@@ -1,0 +1,91 @@
+mdl 1;
+
+/** Opens the pop-up to add a ticket. */
+create or modify microflow AWSBedrockImplementation.ACT_Ticket_New ()
+folder 'Ticket'
+begin
+  $Ticket = create AWSBedrockImplementation.Ticket (
+    Status = AWSBedrockImplementation.ENUM_Ticket_Status.Open,
+    Category = AWSBedrockImplementation.ENUM_Ticket_Category.Bug
+  );
+  show page AWSBedrockImplementation.Ticket_Edit(Ticket = $Ticket);
+  return;
+end;
+
+/** Opens the pop-up to edit a ticket. */
+create or modify microflow AWSBedrockImplementation.ACT_Ticket_Edit (
+  $Ticket: AWSBedrockImplementation.Ticket
+)
+folder 'Ticket'
+begin
+  show page AWSBedrockImplementation.Ticket_Edit(Ticket = $Ticket);
+  return;
+end;
+
+/** Saves a ticket, stamps the change time, updates the setup status and closes the pop-up. */
+create or modify microflow AWSBedrockImplementation.ACT_Ticket_Save (
+  $Ticket: AWSBedrockImplementation.Ticket
+)
+folder 'Ticket'
+begin
+  if $Ticket/Subject = empty or trim($Ticket/Subject) = '' then
+    validation feedback $Ticket/Subject message 'Enter a subject';
+    return;
+  end if;
+  if $Ticket/Description = empty or trim($Ticket/Description) = '' then
+    validation feedback $Ticket/Description message 'Enter a description';
+    return;
+  end if;
+  change $Ticket (ChangedDateTime = [%CurrentDateTime%]);
+  commit $Ticket refresh;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshCounts(Config = $Config);
+  close page;
+  return;
+end;
+
+/** Deletes a ticket and updates the setup status. */
+create or modify microflow AWSBedrockImplementation.ACT_Ticket_Delete (
+  $Ticket: AWSBedrockImplementation.Ticket
+)
+folder 'Ticket'
+begin
+  delete $Ticket refresh;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshCounts(Config = $Config);
+  return;
+end;
+
+/** Replaces all tickets with the sample tickets and updates the setup status. */
+create or modify microflow AWSBedrockImplementation.ACT_Tickets_LoadSamples ()
+folder 'Ticket'
+begin
+  $TicketList = call microflow AWSBedrockImplementation.ACT_TicketList_RePopulate();
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshCounts(Config = $Config);
+  return;
+end;
+
+/** Rebuilds the knowledge base from the tickets with the selected embedding model and database, then records what it was built with. */
+create or modify microflow AWSBedrockImplementation.ACT_Chunks_Rebuild ()
+folder 'Ticket'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  if $Database = empty then
+    show message 'Select a vector database on the Connections tab first.' type Error blocking;
+    return;
+  end if;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  call microflow AWSBedrockImplementation.ACT_TicketList_CreateChunks_StoreInVectorDB();
+  $ChunkList = call microflow AWSBedrockImplementation.DS_TicketChunkList();
+  $ChunkCount = count $ChunkList;
+  if $ChunkCount = 0 then
+    show message 'No chunks were stored. Check the tickets, the embedding model and the database.' type Error blocking;
+    return;
+  end if;
+  change $Config (ChunksModelId = $EmbeddingModel/ModelId, ChunksCreatedAt = [%CurrentDateTime%], ChunkCount = $ChunkCount);
+  commit $Config refresh;
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshCounts(Config = $Config);
+  return;
+end;

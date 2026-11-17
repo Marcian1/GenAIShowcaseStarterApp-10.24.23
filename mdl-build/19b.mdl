@@ -1,0 +1,9 @@
+mdl 1;
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Ask tickets: a session holds the settings, each answer is an entry with its numbered sources (not stored).$$,
+  Position: (900, 900),
+  Width: 1100
+);
+alter entity AWSBedrockImplementation.AskSession set position (1100, 1170);
+alter entity AWSBedrockImplementation.AskEntry set position (1600, 1170);
+alter entity AWSBedrockImplementation.AskSource set position (2100, 1170);

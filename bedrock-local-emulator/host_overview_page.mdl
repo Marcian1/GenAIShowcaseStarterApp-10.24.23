@@ -1,0 +1,13 @@
+create page AWSBedrockImplementation.Overview (
+  Title: 'AWS Bedrock Implementation',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'aws-bedrock-implementation'
+) {
+  snippetcall snippetCall1 (Snippet: AWSBedrockImplementation.SNIP_Overview)
+};
+
+alter navigation Responsive {
+  insert into 'Amazon Bedrock-Specific' {
+    menu item 'AWS Bedrock Implementation' (OnClick: show page AWSBedrockImplementation.Overview)
+  }
+};

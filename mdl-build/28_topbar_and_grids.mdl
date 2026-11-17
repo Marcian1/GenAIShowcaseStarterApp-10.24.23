@@ -1,0 +1,11 @@
+-- Move the demo page onto the top bar layout and tidy the ticket / search grids.
+alter page AWSBedrockImplementation.Overview { set Layout = AWSBedrockImplementation.Layout_TopBar };
+
+alter snippet AWSBedrockImplementation.SNIP_Tickets {
+  set (RenderMode: Text) on ticketSubject;
+  set (columnsHidable: false) on dgChunks;
+};
+
+alter snippet AWSBedrockImplementation.SNIP_SearchAndAsk {
+  set (columnsHidable: false) on dgSearchResults;
+};
