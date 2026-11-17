@@ -17,3 +17,6 @@ project-settings.user.json
 
 # Local AWS mock runtime files (token, pid, logs)
 bedrock-local-emulator/.runtime/
+
+# Output folder of download-repo.cmd when it is run inside this project
+/GenAIShowcaseStarterApp-10.24.23/

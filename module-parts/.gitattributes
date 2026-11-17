@@ -1,3 +1,0 @@
-*.part* binary
-*.cmd text eol=crlf
-SHA256.txt text eol=crlf
