@@ -32,18 +32,18 @@ public class JA_BedrockTestConnection extends UserAction<java.lang.String>
 
 		StringBuilder sb = new StringBuilder();
 				String region = RegionName == null ? "" : RegionName.trim();
-				if (!awsbedrockimplementation.impl.BedrockSupport.isValidRegion(region)) {
+				if (!JA_BedrockInvokeModel.BedrockSupport.isValidRegion(region)) {
 					return "FAIL: The region \"" + region + "\" is not a valid AWS region.";
 				}
 				sb.append("OK: Region ").append(region).append(" is valid\n");
 		
 				software.amazon.awssdk.auth.credentials.AwsCredentialsProvider provider;
 				try {
-					provider = awsbedrockimplementation.impl.BedrockSupport.credentials();
+					provider = JA_BedrockInvokeModel.BedrockSupport.credentials();
 					provider.resolveCredentials();
 					sb.append("OK: Credentials resolved\n");
 				} catch (Exception e) {
-					awsbedrockimplementation.impl.BedrockSupport.LOG.warn("Test connection: could not resolve credentials (" + e.getClass().getSimpleName() + ")");
+					JA_BedrockInvokeModel.BedrockSupport.LOG.warn("Test connection: could not resolve credentials (" + e.getClass().getSimpleName() + ")");
 					return sb.append("FAIL: Could not resolve credentials. ").append(e.getMessage()).toString();
 				}
 		
@@ -52,7 +52,7 @@ public class JA_BedrockTestConnection extends UserAction<java.lang.String>
 						.credentialsProvider(provider).region(awsRegion).build()) {
 					sb.append("OK: Caller ").append(sts.getCallerIdentity().arn()).append("\n");
 				} catch (Exception e) {
-					awsbedrockimplementation.impl.BedrockSupport.LOG.warn("Test connection: GetCallerIdentity failed (" + e.getClass().getSimpleName() + ")");
+					JA_BedrockInvokeModel.BedrockSupport.LOG.warn("Test connection: GetCallerIdentity failed (" + e.getClass().getSimpleName() + ")");
 					return sb.append("FAIL: Could not read the caller identity. ").append(e.getMessage()).toString();
 				}
 		
@@ -61,7 +61,7 @@ public class JA_BedrockTestConnection extends UserAction<java.lang.String>
 					int count = bedrock.listFoundationModels(r -> {}).modelSummaries().size();
 					sb.append("OK: bedrock:ListFoundationModels is allowed in ").append(region).append(" (").append(count).append(" models visible)");
 				} catch (Exception e) {
-					awsbedrockimplementation.impl.BedrockSupport.LOG.warn("Test connection: ListFoundationModels failed (" + e.getClass().getSimpleName() + ")");
+					JA_BedrockInvokeModel.BedrockSupport.LOG.warn("Test connection: ListFoundationModels failed (" + e.getClass().getSimpleName() + ")");
 					return sb.append("FAIL: Could not list foundation models. ").append(e.getMessage()).toString();
 				}
 				return sb.toString();

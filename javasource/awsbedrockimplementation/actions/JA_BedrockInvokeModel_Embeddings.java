@@ -55,7 +55,7 @@ public class JA_BedrockInvokeModel_Embeddings extends UserAction<java.lang.Strin
 		// BEGIN USER CODE
 		IContext context = getContext();
 		// Embedding models take no guardrail.
-		return awsbedrockimplementation.impl.BedrockSupport.invoke(Config.getBedrockRegion(context), ModelName, Request, null, null);
+		return JA_BedrockInvokeModel.BedrockSupport.invoke(Config.getBedrockRegion(context), ModelName, Request, null, null);
 		// END USER CODE
 	}
 
@@ -71,6 +71,6 @@ public class JA_BedrockInvokeModel_Embeddings extends UserAction<java.lang.Strin
 
 	// BEGIN EXTRA CODE
 
-	public static ILogNode LOG = awsbedrockimplementation.impl.BedrockSupport.LOG;
+	public static ILogNode LOG = JA_BedrockInvokeModel.BedrockSupport.LOG;
 	// END EXTRA CODE
 }

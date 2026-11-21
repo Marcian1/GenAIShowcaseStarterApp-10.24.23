@@ -17,6 +17,7 @@ They are kept so the changes can be read in one place. The project itself is the
 | `45_try_empty_model_fix.mdl` | Clearing the model picker in the Try pop-up no longer raises "An error has occurred while handling the request" |
 | `46_try_send_needs_model.mdl` | The Try pop-up asks for a model instead of showing an empty result when none is picked |
 | `47_pg_test_error_message.mdl` | The Test button of a vector database shows the reason when the test itself fails, instead of the generic error |
+| `add-en-gb-translations.js` | Copies every English US text of the module to English UK where that is empty (the Documentation page tab captions, snippets, microflow messages). Run it after creating pages from MDL, otherwise an app with English UK as default language reports CE4899 "Empty caption" after importing the module. Needs Studio Pro closed, then `mxcli fix hashes --repair` |
 | `48_ticket_delimiters.mdl` | Prompt-injection hardening: every ticket sent to the chat model is wrapped in `<ticket number="N">` tags so ticket text is separated from the instructions and the question |
 | `34_rerank.mdl`, `36_rerank_pick.mdl` | Reranking: model family Rerank, Config settings, Java action `JA_RerankChunks`, the new `ACT_Ask`, the Models and Ask tickets UI. `36` fixes the selection of the default reranker |
 | `bson-fix-query-input-type.js` | The question is embedded with Cohere input type `search_query` (MDL cannot recreate `ACT_Pagehelper_Send_SearchItem`). Run it with Studio Pro closed, then `mxcli fix hashes --repair` |

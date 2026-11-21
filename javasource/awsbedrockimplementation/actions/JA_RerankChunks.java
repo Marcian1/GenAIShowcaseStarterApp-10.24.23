@@ -65,79 +65,79 @@ public class JA_RerankChunks extends UserAction<java.util.List<IMendixObject>>
 	{
 		// BEGIN USER CODE
 
-		java.util.function.Function<java.util.List<awsbedrockimplementation.proxies.TicketChunk>, java.util.List<IMendixObject>> toObjects = list -> {
-					java.util.List<IMendixObject> objects = new java.util.ArrayList<>();
-					for (awsbedrockimplementation.proxies.TicketChunk c : list) { objects.add(c.getMendixObject()); }
-					return objects;
-				};
-				java.util.List<awsbedrockimplementation.proxies.TicketChunk> candidates = Chunks == null
-						? new java.util.ArrayList<>() : new java.util.ArrayList<>(Chunks);
-				int top = TopN == null ? 5 : (int) Math.max(1L, TopN.longValue());
-				// Association retrieval has no guaranteed order: sort by vector similarity first (also the fallback order).
-				candidates.sort((a, b) -> {
-					java.math.BigDecimal x = a.getSimilarity() == null ? java.math.BigDecimal.ZERO : a.getSimilarity();
-					java.math.BigDecimal y = b.getSimilarity() == null ? java.math.BigDecimal.ZERO : b.getSimilarity();
-					return y.compareTo(x);
-				});
-				java.util.List<awsbedrockimplementation.proxies.TicketChunk> fallback =
-						new java.util.ArrayList<>(candidates.subList(0, Math.min(top, candidates.size())));
-				if (ModelId == null || ModelId.isBlank() || Config == null || candidates.size() < 2) {
-					return toObjects.apply(fallback);
+		// This code never names the module's own proxy package (awsbedrockimplementation.proxies...): it works on the Mendix
+		// objects. A hardcoded package name breaks when the module is imported under another name (for example
+		// awsbedrockimplementation_new), because Studio Pro does not rewrite text inside user code.
+		final IContext ctx = getContext();
+		final java.util.function.Function<IMendixObject, java.math.BigDecimal> similarityOf = o -> {
+			Object v = o.getValue(ctx, "Similarity");
+			return v instanceof java.math.BigDecimal ? (java.math.BigDecimal) v : java.math.BigDecimal.ZERO;
+		};
+		java.util.List<IMendixObject> candidates = new java.util.ArrayList<>();
+		if (Chunks != null) {
+			for (var chunk : Chunks) { candidates.add(chunk.getMendixObject()); }
+		}
+		int top = TopN == null ? 5 : (int) Math.max(1L, TopN.longValue());
+		// Association retrieval has no guaranteed order: sort by vector similarity first (also the fallback order).
+		candidates.sort((a, b) -> similarityOf.apply(b).compareTo(similarityOf.apply(a)));
+		java.util.List<IMendixObject> fallback = new java.util.ArrayList<>(candidates.subList(0, Math.min(top, candidates.size())));
+		if (ModelId == null || ModelId.isBlank() || Config == null || candidates.size() < 2) {
+			return fallback;
+		}
+		// Cohere Rerank accepts a limited number of documents per request: only the best vector matches are sent.
+		final int maxCandidates = 100;
+		if (candidates.size() > maxCandidates) {
+			candidates = new java.util.ArrayList<>(candidates.subList(0, maxCandidates));
+		}
+		String name = ModelName == null || ModelName.isBlank() ? ModelId : ModelName;
+		try {
+			com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+			com.fasterxml.jackson.databind.node.ObjectNode body = mapper.createObjectNode();
+			body.put("api_version", 2);
+			body.put("query", Query);
+			body.put("top_n", Math.min(top, candidates.size()));
+			com.fasterxml.jackson.databind.node.ArrayNode documents = body.putArray("documents");
+			for (IMendixObject chunk : candidates) {
+				Object text = chunk.getValue(ctx, "InputText");
+				documents.add(text == null ? "" : text.toString());
+			}
+			String response = JA_BedrockInvokeModel.BedrockSupport.invoke(
+					Config.getBedrockRegion(ctx), ModelId.trim(), body.toString(), null, null);
+			com.fasterxml.jackson.databind.JsonNode results = mapper.readTree(response).path("results");
+			java.util.List<IMendixObject> ranked = new java.util.ArrayList<>();
+			if (results.isArray()) {
+				for (com.fasterxml.jackson.databind.JsonNode r : results) {
+					int index = r.path("index").asInt(-1);
+					if (index < 0 || index >= candidates.size() || ranked.size() >= top) {
+						continue;
+					}
+					IMendixObject chunk = candidates.get(index);
+					// The score shown next to a source is now the relevance score of the reranker.
+					chunk.setValue(ctx, "Similarity", java.math.BigDecimal.valueOf(r.path("relevance_score").asDouble(0)));
+					ranked.add(chunk);
 				}
-				// Cohere Rerank accepts a limited number of documents per request: only the best vector matches are sent.
-				final int maxCandidates = 100;
-				if (candidates.size() > maxCandidates) {
-					candidates = new java.util.ArrayList<>(candidates.subList(0, maxCandidates));
-				}
-				String name = ModelName == null || ModelName.isBlank() ? ModelId : ModelName;
-				try {
-					com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-					com.fasterxml.jackson.databind.node.ObjectNode body = mapper.createObjectNode();
-					body.put("api_version", 2);
-					body.put("query", Query);
-					body.put("top_n", Math.min(top, candidates.size()));
-					com.fasterxml.jackson.databind.node.ArrayNode documents = body.putArray("documents");
-					for (awsbedrockimplementation.proxies.TicketChunk chunk : candidates) {
-						documents.add(chunk.getInputText() == null ? "" : chunk.getInputText());
-					}
-					String response = awsbedrockimplementation.impl.BedrockSupport.invoke(
-							Config.getBedrockRegion(getContext()), ModelId.trim(), body.toString(), null, null);
-					com.fasterxml.jackson.databind.JsonNode results = mapper.readTree(response).path("results");
-					java.util.List<awsbedrockimplementation.proxies.TicketChunk> ranked = new java.util.ArrayList<>();
-					if (results.isArray()) {
-						for (com.fasterxml.jackson.databind.JsonNode r : results) {
-							int index = r.path("index").asInt(-1);
-							if (index < 0 || index >= candidates.size() || ranked.size() >= top) {
-								continue;
-							}
-							awsbedrockimplementation.proxies.TicketChunk chunk = candidates.get(index);
-							// The score shown next to a source is now the relevance score of the reranker.
-							chunk.getMendixObject().setValue(getContext(), "Similarity",
-									java.math.BigDecimal.valueOf(r.path("relevance_score").asDouble(0)));
-							ranked.add(chunk);
-						}
-						ranked.sort((a, b) -> b.getSimilarity().compareTo(a.getSimilarity()));
-					}
-					if (ranked.isEmpty()) {
-						throw new RuntimeException("The reranker returned no results.");
-					}
-					if (AskEntry != null) {
-						AskEntry.getMendixObject().setValue(getContext(), "Reranked", true);
-						AskEntry.getMendixObject().setValue(getContext(), "RerankText",
-								"Reranked " + candidates.size() + " candidates with " + name + ", kept the best " + ranked.size() + ".");
-					}
-					return toObjects.apply(ranked);
-				} catch (Exception e) {
-					// Never log the question or the ticket text.
-					awsbedrockimplementation.impl.BedrockSupport.LOG.warn("Reranking with " + ModelId + " failed, using the vector order: "
-							+ e.getClass().getSimpleName());
-					if (AskEntry != null) {
-						AskEntry.getMendixObject().setValue(getContext(), "Reranked", false);
-						AskEntry.getMendixObject().setValue(getContext(), "RerankText",
-								"Reranking with " + name + " failed, so the tickets are in vector-similarity order. Check the model and region.");
-					}
-					return toObjects.apply(fallback);
-				}
+				ranked.sort((a, b) -> similarityOf.apply(b).compareTo(similarityOf.apply(a)));
+			}
+			if (ranked.isEmpty()) {
+				throw new RuntimeException("The reranker returned no results.");
+			}
+			if (AskEntry != null) {
+				AskEntry.getMendixObject().setValue(ctx, "Reranked", true);
+				AskEntry.getMendixObject().setValue(ctx, "RerankText",
+						"Reranked " + candidates.size() + " candidates with " + name + ", kept the best " + ranked.size() + ".");
+			}
+			return ranked;
+		} catch (Exception e) {
+			// Never log the question or the ticket text.
+			JA_BedrockInvokeModel.BedrockSupport.LOG.warn("Reranking with " + ModelId + " failed, using the vector order: "
+					+ e.getClass().getSimpleName());
+			if (AskEntry != null) {
+				AskEntry.getMendixObject().setValue(ctx, "Reranked", false);
+				AskEntry.getMendixObject().setValue(ctx, "RerankText",
+						"Reranking with " + name + " failed, so the tickets are in vector-similarity order. Check the model and region.");
+			}
+			return fallback;
+		}
 
 		// END USER CODE
 	}

@@ -36,7 +36,7 @@ public class JA_ListFoundationModels extends UserAction<java.lang.String>
 
 		// Region comes from the standard AWS region chain (AWS_REGION / aws.region); the client is closed after use.
 		try (BedrockClient bedrockClient = BedrockClient.builder()
-				.credentialsProvider(awsbedrockimplementation.impl.BedrockSupport.credentials())
+				.credentialsProvider(JA_BedrockInvokeModel.BedrockSupport.credentials())
 				.build()) {
 			List<FoundationModelSummary> models = bedrockClient.listFoundationModels(r -> {}).modelSummaries();
 			if (models.isEmpty()) {
@@ -49,8 +49,8 @@ public class JA_ListFoundationModels extends UserAction<java.lang.String>
 				}
 			}
 		} catch (software.amazon.awssdk.core.exception.SdkException e) {
-			awsbedrockimplementation.impl.BedrockSupport.LOG.error("ListFoundationModels failed (" + e.getClass().getSimpleName() + ")");
-			awsbedrockimplementation.impl.BedrockSupport.LOG.debug("ListFoundationModels detail", e);
+			JA_BedrockInvokeModel.BedrockSupport.LOG.error("ListFoundationModels failed (" + e.getClass().getSimpleName() + ")");
+			JA_BedrockInvokeModel.BedrockSupport.LOG.debug("ListFoundationModels detail", e);
 			throw new RuntimeException("ListFoundationModels failed: " + e.getMessage());
 		}
 
