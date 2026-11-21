@@ -149,6 +149,26 @@ function anthropic(modelId, body) {
     usage: { input_tokens: Math.ceil(text.length / 4), output_tokens: 32 },
   };
 }
+// OpenAI gpt-oss on Bedrock: InvokeModel takes/returns the OpenAI chat-completions format.
+async function openai(modelId, body) {
+  const messages = (body.messages || []).map((m) => ({ role: m.role, content: blockText(m.content) }));
+  const finish = (text, done, pt, ct, reasoning) => ({
+    id: 'chatcmpl-mock-' + crypto.randomBytes(6).toString('hex'), object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: modelId,
+    choices: [{ index: 0, message: { role: 'assistant', content: text, ...(reasoning ? { reasoning_content: reasoning } : {}) }, finish_reason: done }],
+    usage: { prompt_tokens: pt, completion_tokens: ct, total_tokens: pt + ct } });
+  if (await useOllama()) {
+    const r = await fetch(OLLAMA + '/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: CHAT_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: Math.min(Number(body.max_tokens || body.max_completion_tokens) || MAX_TOKENS, MAX_TOKENS) } }) });
+    if (!r.ok) throw new Error('Ollama chat ' + r.status + ': ' + (await r.text()));
+    const j = await r.json();
+    log('  ollama', CHAT_MODEL, 'replied (openai format),', (j.message?.content || '').length, 'chars');
+    return finish(j.message?.content || '', j.done_reason === 'length' ? 'length' : 'stop', j.prompt_eval_count || 0, j.eval_count || 0);
+  }
+  const last = messages.length ? messages[messages.length - 1].content : '';
+  const excerpt = last.replace(/\s+/g, ' ').trim().slice(0, 300);
+  return finish(`[mock ${modelId}] I received your prompt (${last.length} chars): ${excerpt}`, 'stop', Math.ceil(last.length / 4), 32,
+    body.reasoning_effort ? 'mock reasoning (effort ' + body.reasoning_effort + ')' : undefined);
+}
 async function cohere(body) {
   const texts = body.texts || [];
   const dims = Number(body.output_dimension || 1536);
@@ -160,9 +180,24 @@ async function titan(body) {
   return { embedding: e, inputTextTokenCount: Math.ceil((body.inputText || '').length / 4), embeddingsByType: { float: e } };
 }
 
+// Cohere Rerank on Bedrock InvokeModel: { query, documents[], top_n, api_version } -> { results: [{ index, relevance_score }] } sorted best first.
+async function rerank(body) {
+  const docs = Array.isArray(body.documents) ? body.documents.map((d) => (typeof d === 'string' ? d : (d && d.text) || '')) : [];
+  const vectors = await embedAll([String(body.query || ''), ...docs], 256);
+  const q = vectors[0];
+  const scored = docs.map((_, i) => ({ index: i, relevance_score: Number(Math.max(0, vectors[i + 1].reduce((sum, x, k) => sum + x * q[k], 0)).toFixed(6)) }));
+  scored.sort((a, b) => b.relevance_score - a.relevance_score);
+  const topN = Math.min(Number(body.top_n) || scored.length, scored.length);
+  return { id: crypto.randomUUID(), results: scored.slice(0, topN), meta: { api_version: { version: '2' }, billed_units: { search_units: 1 } } };
+}
+
 const MODELS = [
   ['eu.anthropic.claude-sonnet-5', 'Claude Sonnet 5', 'Anthropic'],
+  ['eu.anthropic.claude-haiku-5-5', 'Claude Haiku 5.5', 'Anthropic'],
+  ['openai.gpt-oss-120b-1:0', 'gpt-oss-120b', 'OpenAI'],
+  ['openai.gpt-oss-20b-1:0', 'gpt-oss-20b', 'OpenAI'],
   ['eu.cohere.embed-v4:0', 'Embed v4', 'Cohere'],
+  ['cohere.rerank-v3-5:0', 'Rerank 3.5', 'Cohere'],
   ['amazon.titan-embed-text-v2:0', 'Titan Text Embeddings V2', 'Amazon'],
 ].map(([id, name, prov]) => ({
   modelArn: `arn:aws:bedrock:eu-central-1::foundation-model/${id}`, modelId: id, modelName: name, providerName: prov,
@@ -194,7 +229,15 @@ http.createServer(async (req, res) => {
       log('Bedrock InvokeModel', modelId, guard ? `(guardrail ${guard}/${req.headers['x-amzn-bedrock-guardrailversion']})` : '');
       let out;
       if (/anthropic/.test(modelId)) out = (await useOllama()) ? await ollamaChat(modelId, payload) : anthropic(modelId, payload);
-      else if (/cohere/.test(modelId)) { out = await cohere(payload); log('  cohere embeddings for', (payload.texts || []).length, 'texts'); }
+      else if (/openai/.test(modelId)) {
+        if (!Array.isArray(payload.messages) || !payload.messages.length) return json(res, 400, { message: 'Malformed input request: messages is required' }, { 'x-amzn-errortype': 'ValidationException' });
+        out = await openai(modelId, payload);
+      }
+      else if (/cohere.*rerank/.test(modelId)) {
+        if (!payload.query || !Array.isArray(payload.documents) || !payload.documents.length) return json(res, 400, { message: 'Malformed input request: query and documents are required' }, { 'x-amzn-errortype': 'ValidationException' });
+        out = await rerank(payload); log('  cohere rerank of', payload.documents.length, 'documents, top_n', payload.top_n);
+      }
+      else if (/cohere/.test(modelId)) { out = await cohere(payload); log('  cohere embeddings for', (payload.texts || []).length, 'texts, input_type', payload.input_type); }
       else if (/titan-embed/.test(modelId)) out = await titan(payload);
       else return json(res, 404, { message: 'Model not supported by mock: ' + modelId }, { 'x-amzn-errortype': 'ResourceNotFoundException' });
       return json(res, 200, out, { 'x-amzn-bedrock-invocation-latency': '5' });
@@ -205,4 +248,7 @@ http.createServer(async (req, res) => {
     log('ERROR', e.stack);
     json(res, 500, { message: String(e) });
   }
-}).listen(PORT, HOST, () => log(`AWS mock (STS + Bedrock) listening on http://${HOST}:${PORT}`));
+}).listen(PORT, HOST, () => {
+  log(`AWS mock (STS + Bedrock) listening on http://${HOST}:${PORT}`);
+  log('WARNING: local test double only. Never point a real or shared app at it (AWS_ENDPOINT_URL) and keep it bound to 127.0.0.1.');
+});

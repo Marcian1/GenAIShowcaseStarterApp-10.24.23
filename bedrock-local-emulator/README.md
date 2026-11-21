@@ -34,3 +34,12 @@ If Ollama is running on `localhost:11434`, the mock forwards model calls to it i
 Setup: `winget install Ollama.Ollama`, then `ollama pull bge-m3` and `ollama pull llama3.2:3b`, then restart the mock
 (stop the node process on port 8787, run `.\bedrock-local-emulator\start-mock.ps1`). CPU-only: ~17 s per 96 embeddings, ~10-20 s per chat reply.
 After switching backends, click "Create chunks and store in knowledge base" again so stored vectors match the new model.
+
+## GPT (OpenAI gpt-oss) via Bedrock
+The mock also serves `openai.gpt-oss-120b-1:0` and `openai.gpt-oss-20b-1:0` in the OpenAI chat-completions format
+(`messages`, `max_tokens`, `reasoning_effort` in; `choices[0].message.content`, `usage.prompt_tokens/completion_tokens` out).
+In the app add a model with family "OpenAI GPT via Bedrock (chat)" and one of those ids. With Ollama running the reply is real, otherwise it echoes the prompt.
+
+## Cohere Rerank
+The mock also serves `cohere.rerank-v3-5:0` (InvokeModel with `query`, `documents`, `top_n`, `api_version`; answers `results[].index/relevance_score`).
+Scores are the cosine similarity of the (hashed or Ollama) embeddings, so they are not a real reranker. The log line `cohere embeddings ... input_type` shows `search_document` while indexing and `search_query` for questions.

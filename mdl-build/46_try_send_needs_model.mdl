@@ -1,0 +1,29 @@
+mdl 1;
+
+-- Without a model the Try pop-up Send button called nothing and showed an empty result ("0 s, 0 tokens"). It now asks for a model.
+drop microflow AWSBedrockImplementation.ACT_TrySession_Send;
+/** The Send button of the try-out pop-up: calls the model, measures the time and shows the result. Asks for a model when none is picked. */
+create or modify microflow AWSBedrockImplementation.ACT_TrySession_Send (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  retrieve $BedrockModel from $TrySession/AWSBedrockImplementation.TrySession_BedrockModel;
+  if $BedrockModel = empty then
+    show message 'Pick a model first.' type Information blocking;
+    return;
+  end if;
+  if $TrySession/Input = empty or trim($TrySession/Input) = '' then
+    validation feedback $TrySession/Input message 'Enter some text first';
+    return;
+  end if;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  declare $StartedAt DateTime = [%CurrentDateTime%];
+  call microflow AWSBedrockImplementation.SUB_TrySession_Dispatch(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config) on error without rollback begin
+    show message 'The request failed: {1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  change $TrySession (Seconds = millisecondsBetween($StartedAt, [%CurrentDateTime%]) div 1000, HasResult = true) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_TrySession_Send to AWSBedrockImplementation.Admin;

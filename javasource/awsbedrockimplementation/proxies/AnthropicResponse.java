@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * Response of Claude. Imported from JSON by IMM_AnthropicResponse.
+ */
 public class AnthropicResponse implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject anthropicResponseMendixObject;

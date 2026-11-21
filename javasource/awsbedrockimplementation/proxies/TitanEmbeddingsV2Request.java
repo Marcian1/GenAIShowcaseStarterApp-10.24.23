@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * Request body for Amazon Titan Text Embeddings V2.
+ */
 public class TitanEmbeddingsV2Request implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject titanEmbeddingsV2RequestMendixObject;

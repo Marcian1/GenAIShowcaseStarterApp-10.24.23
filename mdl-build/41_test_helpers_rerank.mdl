@@ -1,0 +1,78 @@
+mdl 1;
+-- Helper microflows for tests/mdl/rerank.test.mdl (reranking, default reranker, Rerank family).
+
+-- No reranker model id: the Java action returns the best TopN chunks sorted by vector similarity. Result: count|texts|reranked
+create or modify microflow BedrockTests.RerankNoModelOrder () returns String
+begin
+  $List = create list of AWSBedrockImplementation.TicketChunk;
+  $A = create AWSBedrockImplementation.TicketChunk (InputText = 'low', Similarity = 0.2);
+  $B = create AWSBedrockImplementation.TicketChunk (InputText = 'high', Similarity = 0.9);
+  $C = create AWSBedrockImplementation.TicketChunk (InputText = 'mid', Similarity = 0.5);
+  add $A to $List;
+  add $B to $List;
+  add $C to $List;
+  $Config = create AWSBedrockImplementation.Config (BedrockRegion = '');
+  $Entry = create AWSBedrockImplementation.AskEntry ();
+  $Out = call java action AWSBedrockImplementation.JA_RerankChunks(Query = 'q', Chunks = $List, TopN = 2, ModelId = '', ModelName = '', Config = $Config, AskEntry = $Entry);
+  $N = count $Out;
+  declare $Joined String = '';
+  loop $Item in $Out
+  begin
+    set $Joined = $Joined + $Item/InputText + ',';
+  end loop;
+  return toString($N) + '|' + $Joined + '|' + toString($Entry/Reranked);
+end;
+
+-- Reranker configured but not reachable (no region): the Java action must not throw, keeps the vector order and notes the failure.
+create or modify microflow BedrockTests.RerankFailureFallback () returns String
+begin
+  $List = create list of AWSBedrockImplementation.TicketChunk;
+  $A = create AWSBedrockImplementation.TicketChunk (InputText = 'low', Similarity = 0.2);
+  $B = create AWSBedrockImplementation.TicketChunk (InputText = 'high', Similarity = 0.9);
+  add $A to $List;
+  add $B to $List;
+  $Config = create AWSBedrockImplementation.Config (BedrockRegion = '');
+  $Entry = create AWSBedrockImplementation.AskEntry ();
+  $Out = call java action AWSBedrockImplementation.JA_RerankChunks(Query = 'q', Chunks = $List, TopN = 1, ModelId = 'cohere.rerank-v3-5:0', ModelName = 'Test reranker', Config = $Config, AskEntry = $Entry);
+  $N = count $Out;
+  $First = head $Out;
+  return toString($N) + '|' + $First/InputText + '|' + toString($Entry/Reranked) + '|' + $Entry/RerankText;
+end;
+
+-- The default reranker is chosen once, on the Config that DS_Config returns.
+create or modify microflow BedrockTests.DefaultRerankModelId () returns String
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Model from $Config/AWSBedrockImplementation.Config_RerankModel;
+  declare $Id String = 'none';
+  if $Model != empty then
+    set $Id = $Model/ModelId;
+  end if;
+  return $Id;
+end;
+
+-- Status: IsRerankEnabled follows the selected reranker. Result: on|off, and the selection is restored.
+create or modify microflow BedrockTests.RerankEnabledFlag () returns String
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Model from $Config/AWSBedrockImplementation.Config_RerankModel;
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshStatus(Config = $Config);
+  declare $On Boolean = $Config/IsRerankEnabled;
+  declare $Key String = $Config/RerankModelKey;
+  change $Config (AWSBedrockImplementation.Config_RerankModel = empty);
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshStatus(Config = $Config);
+  declare $Off Boolean = $Config/IsRerankEnabled;
+  change $Config (AWSBedrockImplementation.Config_RerankModel = $Model);
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshStatus(Config = $Config);
+  return toString($On) + '|' + toString($Off) + '|' + $Key;
+end;
+
+-- Trying a Rerank model in the dispatcher must not fail (it only logs).
+create or modify microflow BedrockTests.DispatchRerankDoesNotFail () returns String
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  $Model = create AWSBedrockImplementation.BedrockModel (Name = 'R', ModelId = 'r', Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank);
+  $Try = create AWSBedrockImplementation.TrySession ();
+  call microflow AWSBedrockImplementation.SUB_TrySession_Dispatch(TrySession = $Try, BedrockModel = $Model, Config = $Config);
+  return 'ok';
+end;

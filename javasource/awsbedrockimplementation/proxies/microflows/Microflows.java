@@ -16,6 +16,9 @@ public final class Microflows
 	private Microflows() {}
 
 	// These are the microflows for the AWSBedrockImplementation module
+	/**
+	 * Building block: sends an AnthropicRequest to the model in the ModelHelper and shows the response. Not used by the demo page, which has the Try and Ask flows.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_AnthropicRequest_SendBuilder(
 		awsbedrockimplementation.proxies.AnthropicRequest _anthropicRequest,
 		awsbedrockimplementation.proxies.ModelHelper _modelHelper
@@ -27,6 +30,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: sends an AnthropicRequest to the model in the ModelHelper and shows the response. Not used by the demo page, which has the Try and Ask flows.
+	 */
 	public static void aCT_AnthropicRequest_Send(
 		IContext context,
 		awsbedrockimplementation.proxies.AnthropicRequest _anthropicRequest,
@@ -40,7 +46,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * Searches the knowledge base, asks the chat model with the numbered tickets as context and adds the answer to the session.
+	 * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_AskBuilder(
 		awsbedrockimplementation.proxies.AskSession _askSession
@@ -52,7 +58,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Searches the knowledge base, asks the chat model with the numbered tickets as context and adds the answer to the session.
+	 * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session.
 	 */
 	public static void aCT_Ask(
 		IContext context,
@@ -202,7 +208,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * Deletes a model unless it is the chat or embedding model in use.
+	 * Deletes a model unless it is the chat or embedding model in use. Refreshes the setup status afterwards.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_BedrockModel_DeleteBuilder(
 		awsbedrockimplementation.proxies.BedrockModel _bedrockModel
@@ -214,7 +220,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Deletes a model unless it is the chat or embedding model in use.
+	 * Deletes a model unless it is the chat or embedding model in use. Refreshes the setup status afterwards.
 	 */
 	public static void aCT_BedrockModel_Delete(
 		IContext context,
@@ -333,6 +339,9 @@ public final class Microflows
 	{
 		aCT_Chunks_RebuildBuilder().execute(context);
 	}
+	/**
+	 * Building block: sends a CohereRequest (embeddings) to the model in the ModelHelper. Not used by the demo page.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_CohereRequest_SendBuilder(
 		awsbedrockimplementation.proxies.CohereRequest _cohereRequest,
 		awsbedrockimplementation.proxies.ModelHelper _modelHelper
@@ -344,6 +353,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: sends a CohereRequest (embeddings) to the model in the ModelHelper. Not used by the demo page.
+	 */
 	public static void aCT_CohereRequest_Send(
 		IContext context,
 		awsbedrockimplementation.proxies.CohereRequest _cohereRequest,
@@ -456,6 +468,9 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Building block: adds an embedding type to the Cohere request.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_Embedding_type_CreateBuilder(
 		awsbedrockimplementation.proxies.Embedding_types _embedding_types
 	)
@@ -465,6 +480,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: adds an embedding type to the Cohere request.
+	 */
 	public static void aCT_Embedding_type_Create(
 		IContext context,
 		awsbedrockimplementation.proxies.Embedding_types _embedding_types
@@ -475,6 +493,9 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Building block: adds an embedding type to the Titan request.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_EmbeddingType_CreateBuilder(
 		awsbedrockimplementation.proxies.EmbeddingTypes _embeddingTypes
 	)
@@ -484,6 +505,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: adds an embedding type to the Titan request.
+	 */
 	public static void aCT_EmbeddingType_Create(
 		IContext context,
 		awsbedrockimplementation.proxies.EmbeddingTypes _embeddingTypes
@@ -494,6 +518,9 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Building block: removes an embedding type from the Titan request.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_EmbeddingType_DeleteBuilder(
 		awsbedrockimplementation.proxies.EmbeddingType _embeddingType
 	)
@@ -503,6 +530,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: removes an embedding type from the Titan request.
+	 */
 	public static void aCT_EmbeddingType_Delete(
 		IContext context,
 		awsbedrockimplementation.proxies.EmbeddingType _embeddingType
@@ -513,16 +543,25 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * The List models in AWS button: shows the foundation models Bedrock offers in the configured region.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_ListFoundationModelsBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.ACT_ListFoundationModels");
 		return builder;
 	}
 
+	/**
+	 * The List models in AWS button: shows the foundation models Bedrock offers in the configured region.
+	 */
 	public static void aCT_ListFoundationModels(IContext context)
 	{
 		aCT_ListFoundationModelsBuilder().execute(context);
 	}
+	/**
+	 * Sends the system prompt, the ticket data and the user prompt to the chat model selected on the Config (Claude or GPT) and stores the answer text on the PageHelper.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_PageHelper_PromptRequest_SendBuilder(
 		awsbedrockimplementation.proxies.PageHelper _pageHelper
 	)
@@ -532,6 +571,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Sends the system prompt, the ticket data and the user prompt to the chat model selected on the Config (Claude or GPT) and stores the answer text on the PageHelper.
+	 */
 	public static void aCT_PageHelper_PromptRequest_Send(
 		IContext context,
 		awsbedrockimplementation.proxies.PageHelper _pageHelper
@@ -542,6 +584,9 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Embeds the search text with Cohere input type search_query and fetches the nearest chunks from the pgvector knowledge base into the PageHelper (MaxResults, MinimumSimilarity). Used by the Search and ask tab and by ACT_Ask.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_Pagehelper_Send_SearchItemBuilder(
 		awsbedrockimplementation.proxies.PageHelper _pageHelper
 	)
@@ -551,6 +596,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Embeds the search text with Cohere input type search_query and fetches the nearest chunks from the pgvector knowledge base into the PageHelper (MaxResults, MinimumSimilarity). Used by the Search and ask tab and by ACT_Ask.
+	 */
 	public static void aCT_Pagehelper_Send_SearchItem(
 		IContext context,
 		awsbedrockimplementation.proxies.PageHelper _pageHelper
@@ -562,7 +610,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * Tests a pgvector database (connection and vector extension). Records the result when it is the selected database.
+	 * Tests a pgvector database (connection and vector extension). Records the result when it is the selected database. Shows the reason when the test itself fails.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_PgDatabase_TestBuilder(
 		pgvectorknowledgebase.proxies.DatabaseConfiguration _databaseConfiguration
@@ -574,7 +622,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Tests a pgvector database (connection and vector extension). Records the result when it is the selected database.
+	 * Tests a pgvector database (connection and vector extension). Records the result when it is the selected database. Shows the reason when the test itself fails.
 	 */
 	public static void aCT_PgDatabase_Test(
 		IContext context,
@@ -586,6 +634,9 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Building block: adds a Text to the Cohere request.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_Text_CreateBuilder(
 		awsbedrockimplementation.proxies.Texts _texts
 	)
@@ -595,6 +646,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: adds a Text to the Cohere request.
+	 */
 	public static void aCT_Text_Create(
 		IContext context,
 		awsbedrockimplementation.proxies.Texts _texts
@@ -696,22 +750,34 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Deletes the knowledge base and refills it: reads the tickets in batches of 96 (the Cohere limit per request) and embeds and stores each batch. Called by the Create / Rebuild chunks buttons.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_TicketList_CreateChunks_StoreInVectorDBBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.ACT_TicketList_CreateChunks_StoreInVectorDB");
 		return builder;
 	}
 
+	/**
+	 * Deletes the knowledge base and refills it: reads the tickets in batches of 96 (the Cohere limit per request) and embeds and stores each batch. Called by the Create / Rebuild chunks buttons.
+	 */
 	public static void aCT_TicketList_CreateChunks_StoreInVectorDB(IContext context)
 	{
 		aCT_TicketList_CreateChunks_StoreInVectorDBBuilder().execute(context);
 	}
+	/**
+	 * Replaces all tickets with the sample tickets (the Load sample tickets button). Returns the new list.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_TicketList_RePopulateBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.ACT_TicketList_RePopulate");
 		return builder;
 	}
 
+	/**
+	 * Replaces all tickets with the sample tickets (the Load sample tickets button). Returns the new list.
+	 */
 	public static java.util.List<awsbedrockimplementation.proxies.Ticket> aCT_TicketList_RePopulate(IContext context)
 	{
 		Object result = aCT_TicketList_RePopulateBuilder().execute(context);
@@ -733,6 +799,9 @@ public final class Microflows
 	{
 		aCT_Tickets_LoadSamplesBuilder().execute(context);
 	}
+	/**
+	 * Building block: sends a Titan Embeddings V2 request to the model in the ModelHelper. Not used by the demo page.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_TitalEmbeddingsV2Request_SendBuilder(
 		awsbedrockimplementation.proxies.ModelHelper _modelHelper,
 		awsbedrockimplementation.proxies.TitanEmbeddingsV2Request _titanEmbeddingsV2Request
@@ -744,6 +813,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: sends a Titan Embeddings V2 request to the model in the ModelHelper. Not used by the demo page.
+	 */
 	public static void aCT_TitalEmbeddingsV2Request_Send(
 		IContext context,
 		awsbedrockimplementation.proxies.ModelHelper _modelHelper,
@@ -782,7 +854,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * The Send button of the try-out pop-up: calls the model, measures the time and shows the result.
+	 * The Send button of the try-out pop-up: calls the model, measures the time and shows the result. Asks for a model when none is picked.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_TrySession_SendBuilder(
 		awsbedrockimplementation.proxies.TrySession _trySession
@@ -794,7 +866,7 @@ public final class Microflows
 	}
 
 	/**
-	 * The Send button of the try-out pop-up: calls the model, measures the time and shows the result.
+	 * The Send button of the try-out pop-up: calls the model, measures the time and shows the result. Asks for a model when none is picked.
 	 */
 	public static void aCT_TrySession_Send(
 		IContext context,
@@ -806,12 +878,18 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Building block: a new AnthropicRequest with default values.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_AnthropicRequestBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.DS_AnthropicRequest");
 		return builder;
 	}
 
+	/**
+	 * Building block: a new AnthropicRequest with default values.
+	 */
 	public static awsbedrockimplementation.proxies.AnthropicRequest dS_AnthropicRequest(IContext context)
 	{
 		Object result = dS_AnthropicRequestBuilder().execute(context);
@@ -860,12 +938,18 @@ public final class Microflows
 		Object result = dS_AskSessionBuilder().execute(context);
 		return result == null ? null : awsbedrockimplementation.proxies.AskSession.initialize(context, (IMendixObject) result);
 	}
+	/**
+	 * Building block: a new CohereRequest with default values.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_Cohere_RequestBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.DS_Cohere_Request");
 		return builder;
 	}
 
+	/**
+	 * Building block: a new CohereRequest with default values.
+	 */
 	public static awsbedrockimplementation.proxies.CohereRequest dS_Cohere_Request(IContext context)
 	{
 		Object result = dS_Cohere_RequestBuilder().execute(context);
@@ -905,6 +989,9 @@ public final class Microflows
 		Object result = dS_Config_SetupBuilder().execute(context);
 		return result == null ? null : awsbedrockimplementation.proxies.Config.initialize(context, (IMendixObject) result);
 	}
+	/**
+	 * Building block: a ModelHelper that carries a model name.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_ModelHelperBuilder(
 		java.lang.String _modelName
 	)
@@ -914,6 +1001,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Building block: a ModelHelper that carries a model name.
+	 */
 	public static awsbedrockimplementation.proxies.ModelHelper dS_ModelHelper(
 		IContext context,
 		java.lang.String _modelName
@@ -925,45 +1015,69 @@ public final class Microflows
 			.execute(context);
 		return result == null ? null : awsbedrockimplementation.proxies.ModelHelper.initialize(context, (IMendixObject) result);
 	}
+	/**
+	 * Data source: a new PageHelper with the default system prompt for the ticket assistant.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_PageHelperBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.DS_PageHelper");
 		return builder;
 	}
 
+	/**
+	 * Data source: a new PageHelper with the default system prompt for the ticket assistant.
+	 */
 	public static awsbedrockimplementation.proxies.PageHelper dS_PageHelper(IContext context)
 	{
 		Object result = dS_PageHelperBuilder().execute(context);
 		return result == null ? null : awsbedrockimplementation.proxies.PageHelper.initialize(context, (IMendixObject) result);
 	}
+	/**
+	 * Data source: the chunks stored in the knowledge base of the selected database (the chunk grid of the Tickets tab).
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_TicketChunkListBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.DS_TicketChunkList");
 		return builder;
 	}
 
+	/**
+	 * Data source: the chunks stored in the knowledge base of the selected database (the chunk grid of the Tickets tab).
+	 */
 	public static java.util.List<awsbedrockimplementation.proxies.TicketChunk> dS_TicketChunkList(IContext context)
 	{
 		Object result = dS_TicketChunkListBuilder().execute(context);
 		return result == null ? null : com.mendix.utils.ListUtils.map((java.util.List<IMendixObject>) result, obj -> awsbedrockimplementation.proxies.TicketChunk.initialize(context, obj));
 	}
+	/**
+	 * Data source: all tickets.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_TicketListBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.DS_TicketList");
 		return builder;
 	}
 
+	/**
+	 * Data source: all tickets.
+	 */
 	public static java.util.List<awsbedrockimplementation.proxies.Ticket> dS_TicketList(IContext context)
 	{
 		Object result = dS_TicketListBuilder().execute(context);
 		return result == null ? null : com.mendix.utils.ListUtils.map((java.util.List<IMendixObject>) result, obj -> awsbedrockimplementation.proxies.Ticket.initialize(context, obj));
 	}
+	/**
+	 * Building block: a new Titan Embeddings V2 request with default values.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder dS_TitanEmbeddingsV2_RequestBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.DS_TitanEmbeddingsV2_Request");
 		return builder;
 	}
 
+	/**
+	 * Building block: a new Titan Embeddings V2 request with default values.
+	 */
 	public static awsbedrockimplementation.proxies.TitanEmbeddingsV2Request dS_TitanEmbeddingsV2_Request(IContext context)
 	{
 		Object result = dS_TitanEmbeddingsV2_RequestBuilder().execute(context);
@@ -995,6 +1109,9 @@ public final class Microflows
 			.execute(context);
 		return result == null ? null : awsbedrockimplementation.proxies.ENUM_Ticket_Status.valueOf((java.lang.String) result);
 	}
+	/**
+	 * Older version of the batch indexing with a fixed database name. Not used by the demo page, which uses SUB_BatchTicketList_CreateChunks_InsertInVectorDB.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_96TicketList_CreateEmbeddings_StoreBuilder(
 		java.util.List<awsbedrockimplementation.proxies.Ticket> _ticketList
 	)
@@ -1004,6 +1121,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Older version of the batch indexing with a fixed database name. Not used by the demo page, which uses SUB_BatchTicketList_CreateChunks_InsertInVectorDB.
+	 */
 	public static void sUB_96TicketList_CreateEmbeddings_Store(
 		IContext context,
 		java.util.List<awsbedrockimplementation.proxies.Ticket> _ticketList
@@ -1048,6 +1168,9 @@ public final class Microflows
 			.execute(context);
 		return (java.lang.String) result;
 	}
+	/**
+	 * Turns one batch of tickets into chunks (subject, description, reproduction steps), embeds them with Cohere input type search_document and inserts them in the pgvector knowledge base.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_BatchTicketList_CreateChunks_InsertInVectorDBBuilder(
 		java.util.List<awsbedrockimplementation.proxies.Ticket> _ticketList,
 		pgvectorknowledgebase.proxies.PgVectorKnowledgeBase _pgVectorKnowledgeBase
@@ -1059,6 +1182,9 @@ public final class Microflows
 		return builder;
 	}
 
+	/**
+	 * Turns one batch of tickets into chunks (subject, description, reproduction steps), embeds them with Cohere input type search_document and inserts them in the pgvector knowledge base.
+	 */
 	public static void sUB_BatchTicketList_CreateChunks_InsertInVectorDB(
 		IContext context,
 		java.util.List<awsbedrockimplementation.proxies.Ticket> _ticketList,
@@ -1072,7 +1198,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * Creates the three default models (Claude, Cohere, Titan) the first time the app is opened.
+	 * Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku model when it is missing.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_BedrockModel_SeedDefaultsBuilder()
 	{
@@ -1081,14 +1207,14 @@ public final class Microflows
 	}
 
 	/**
-	 * Creates the three default models (Claude, Cohere, Titan) the first time the app is opened.
+	 * Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku model when it is missing.
 	 */
 	public static void sUB_BedrockModel_SeedDefaults(IContext context)
 	{
 		sUB_BedrockModel_SeedDefaultsBuilder().execute(context);
 	}
 	/**
-	 * Selects a chat model, an embedding model and a vector database on the Config when none is selected yet.
+	 * Selects a chat model, an embedding model and a vector database on the Config when none is selected, and the default reranker once (RerankPicked), so clearing the reranker afterwards sticks.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_Config_PickMissingDefaultsBuilder(
 		awsbedrockimplementation.proxies.Config _config
@@ -1100,7 +1226,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Selects a chat model, an embedding model and a vector database on the Config when none is selected yet.
+	 * Selects a chat model, an embedding model and a vector database on the Config when none is selected, and the default reranker once (RerankPicked), so clearing the reranker afterwards sticks.
 	 */
 	public static void sUB_Config_PickMissingDefaults(
 		IContext context,
@@ -1137,18 +1263,57 @@ public final class Microflows
 			)
 			.execute(context);
 	}
+	/**
+	 * Same as the Claude prompt for the ticket Q&A, but for a GPT chat model. Returns the answer text.
+	 */
+	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_PageHelper_PromptGptBuilder(
+		awsbedrockimplementation.proxies.PageHelper _pageHelper,
+		awsbedrockimplementation.proxies.Config _config,
+		awsbedrockimplementation.proxies.BedrockModel _bedrockModel
+	)
+	{
+		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.SUB_PageHelper_PromptGpt");
+		builder = builder.withParam("PageHelper", _pageHelper);
+		builder = builder.withParam("Config", _config);
+		builder = builder.withParam("BedrockModel", _bedrockModel);
+		return builder;
+	}
+
+	/**
+	 * Same as the Claude prompt for the ticket Q&A, but for a GPT chat model. Returns the answer text.
+	 */
+	public static void sUB_PageHelper_PromptGpt(
+		IContext context,
+		awsbedrockimplementation.proxies.PageHelper _pageHelper,
+		awsbedrockimplementation.proxies.Config _config,
+		awsbedrockimplementation.proxies.BedrockModel _bedrockModel
+	)
+	{
+		sUB_PageHelper_PromptGptBuilder(
+				_pageHelper,
+				_config,
+				_bedrockModel
+			)
+			.execute(context);
+	}
+	/**
+	 * Ends and starts a database transaction, to commit a batch and free memory in long loops.
+	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_Transaction_End_StartBuilder()
 	{
 		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.SUB_Transaction_End_Start");
 		return builder;
 	}
 
+	/**
+	 * Ends and starts a database transaction, to commit a batch and free memory in long loops.
+	 */
 	public static void sUB_Transaction_End_Start(IContext context)
 	{
 		sUB_Transaction_End_StartBuilder().execute(context);
 	}
 	/**
-	 * Fills the try-out settings from the defaults of the selected model and clears the previous result.
+	 * Fills the try-out settings from the defaults of the selected model and clears the previous result. Without a model it only clears the result.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_TrySession_ApplyModelDefaultsBuilder(
 		awsbedrockimplementation.proxies.TrySession _trySession
@@ -1160,7 +1325,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Fills the try-out settings from the defaults of the selected model and clears the previous result.
+	 * Fills the try-out settings from the defaults of the selected model and clears the previous result. Without a model it only clears the result.
 	 */
 	public static void sUB_TrySession_ApplyModelDefaults(
 		IContext context,
@@ -1173,7 +1338,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * Picks the request builder that matches the family of the selected model.
+	 * Picks the request builder that matches the family of the model in the Try pop-up. A Rerank model only logs a warning: it is used by the Ask tickets tab.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_TrySession_DispatchBuilder(
 		awsbedrockimplementation.proxies.TrySession _trySession,
@@ -1189,7 +1354,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Picks the request builder that matches the family of the selected model.
+	 * Picks the request builder that matches the family of the model in the Try pop-up. A Rerank model only logs a warning: it is used by the Ask tickets tab.
 	 */
 	public static void sUB_TrySession_Dispatch(
 		IContext context,
@@ -1265,6 +1430,39 @@ public final class Microflows
 	)
 	{
 		sUB_TrySession_SendCohereBuilder(
+				_trySession,
+				_bedrockModel,
+				_config
+			)
+			.execute(context);
+	}
+	/**
+	 * Sends the prompt to a GPT (OpenAI gpt-oss) model on Bedrock and stores the answer, token counts and raw JSON on the try-out.
+	 */
+	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_TrySession_SendGptBuilder(
+		awsbedrockimplementation.proxies.TrySession _trySession,
+		awsbedrockimplementation.proxies.BedrockModel _bedrockModel,
+		awsbedrockimplementation.proxies.Config _config
+	)
+	{
+		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.SUB_TrySession_SendGpt");
+		builder = builder.withParam("TrySession", _trySession);
+		builder = builder.withParam("BedrockModel", _bedrockModel);
+		builder = builder.withParam("Config", _config);
+		return builder;
+	}
+
+	/**
+	 * Sends the prompt to a GPT (OpenAI gpt-oss) model on Bedrock and stores the answer, token counts and raw JSON on the try-out.
+	 */
+	public static void sUB_TrySession_SendGpt(
+		IContext context,
+		awsbedrockimplementation.proxies.TrySession _trySession,
+		awsbedrockimplementation.proxies.BedrockModel _bedrockModel,
+		awsbedrockimplementation.proxies.Config _config
+	)
+	{
+		sUB_TrySession_SendGptBuilder(
 				_trySession,
 				_bedrockModel,
 				_config

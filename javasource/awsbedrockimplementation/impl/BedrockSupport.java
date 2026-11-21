@@ -43,6 +43,11 @@ public final class BedrockSupport {
 
 	private BedrockSupport() {}
 
+	/** True when the text looks like an AWS region (single place for this check). */
+	public static boolean isValidRegion(String region) {
+		return region != null && REGION_PATTERN.matcher(region.trim()).matches();
+	}
+
 	public static AwsCredentialsProvider credentials() {
 		AwsCredentialsProvider c = credentials;
 		if (c == null) {

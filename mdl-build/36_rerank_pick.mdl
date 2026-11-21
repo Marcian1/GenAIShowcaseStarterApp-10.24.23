@@ -1,0 +1,73 @@
+mdl 1;
+
+-- Fix: the seed set the rerank association on its own copy of the Config and PickMissingDefaults then saved a stale copy over it.
+-- The reranker is now selected in PickMissingDefaults, on the Config object that flows through DS_Config, once (RerankPicked).
+alter entity AWSBedrockImplementation.Config drop attribute RerankSeeded;
+alter entity AWSBedrockImplementation.Config add attribute RerankPicked: Boolean default false;
+
+drop microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults;
+create or modify microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults ()
+folder 'BedrockModel'
+begin
+  retrieve $ModelList from AWSBedrockImplementation.BedrockModel;
+  $ModelCount = count $ModelList;
+  if $ModelCount = 0 then
+    $Claude = create AWSBedrockImplementation.BedrockModel (Name = 'Claude Sonnet 5', ModelId = 'eu.anthropic.claude-sonnet-5', Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.high) commit;
+    $Gpt = create AWSBedrockImplementation.BedrockModel (Name = 'GPT OSS 120B', ModelId = 'openai.gpt-oss-120b-1:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.medium) commit;
+    $Cohere = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Embed v4', ModelId = 'eu.cohere.embed-v4:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere, Dimension = 1024, InputType = AWSBedrockImplementation.ENUM_CohereInputType.search_document, Truncate = AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT) commit;
+    $Titan = create AWSBedrockImplementation.BedrockModel (Name = 'Titan Text Embeddings V2', ModelId = 'amazon.titan-embed-text-v2:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan, Dimension = 1024, Normalize = true) commit;
+  end if;
+  retrieve $SeedConfig from AWSBedrockImplementation.Config
+    first;
+  if $SeedConfig != empty and not($SeedConfig/RerankPicked) then
+    retrieve $ExistingRerank from AWSBedrockImplementation.BedrockModel
+    where Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank
+    first;
+    if $ExistingRerank = empty then
+      $Rerank = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Rerank 3.5', ModelId = 'cohere.rerank-v3-5:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank) commit;
+    end if;
+  end if;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.SUB_Config_PickMissingDefaults;
+create or modify microflow AWSBedrockImplementation.SUB_Config_PickMissingDefaults (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $ChatModel = empty then
+    retrieve $FirstChatModel from AWSBedrockImplementation.BedrockModel
+    where Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude
+    first;
+    change $Config (AWSBedrockImplementation.Config_ChatModel = $FirstChatModel);
+  end if;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  if $EmbeddingModel = empty then
+    retrieve $FirstEmbeddingModel from AWSBedrockImplementation.BedrockModel
+    where Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere
+    first;
+    change $Config (AWSBedrockImplementation.Config_EmbeddingModel = $FirstEmbeddingModel);
+  end if;
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  if $Database = empty then
+    retrieve $FirstDatabase from PgVectorKnowledgeBase.DatabaseConfiguration
+    sort by DisplayName asc
+    first;
+    change $Config (AWSBedrockImplementation.Config_DatabaseConfiguration = $FirstDatabase);
+  end if;
+  if not($Config/RerankPicked) then
+    retrieve $FirstRerankModel from AWSBedrockImplementation.BedrockModel
+    where Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank
+    first;
+    if $FirstRerankModel != empty then
+      change $Config (AWSBedrockImplementation.Config_RerankModel = $FirstRerankModel);
+    end if;
+    change $Config (RerankPicked = true);
+  end if;
+  commit $Config;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_Config_PickMissingDefaults to AWSBedrockImplementation.Admin;

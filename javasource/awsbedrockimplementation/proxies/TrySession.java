@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * State of the Try pop-up of a model: input, settings, result, timing and the raw request and response. Not stored.
+ */
 public class TrySession implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject trySessionMendixObject;

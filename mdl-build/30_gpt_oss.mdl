@@ -1,0 +1,124 @@
+mdl 1;
+
+-- GPT (OpenAI gpt-oss) through Bedrock InvokeModel. The Java layer is unchanged: it passes the JSON body and model id through.
+
+create or modify enumeration AWSBedrockImplementation.ENUM_ModelFamily (
+  Claude 'Anthropic Claude (chat)',
+  OpenAI 'OpenAI GPT via Bedrock (chat)',
+  Cohere 'Cohere Embed (embeddings)',
+  Titan 'Amazon Titan Embeddings V2 (embeddings)',
+  Rerank 'Cohere Rerank (reranking)'
+) folder 'BedrockModel';
+
+-- Request ---------------------------------------------------------------------------------------------
+create json structure AWSBedrockImplementation.JSON_GptRequest
+  folder 'GptRequest/Resources/JSONStructures'
+  sample $${
+  "messages": [
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "Explain how AWS Bedrock InvokeModel works." }
+  ],
+  "max_tokens": 1000,
+  "reasoning_effort": "high"
+}$$
+  CUSTOM NAME map (
+    item of 'messages' as 'Message'
+  );
+
+create non-persistent entity AWSBedrockImplementation.GptRequest (
+  Max_tokens: Integer default 0,
+  Reasoning_effort: String(unlimited)
+);
+create non-persistent entity AWSBedrockImplementation.GptMessage (
+  Role: String(unlimited),
+  Content: String(unlimited)
+);
+create association AWSBedrockImplementation.GptMessage_GptRequest from AWSBedrockImplementation.GptMessage to AWSBedrockImplementation.GptRequest;
+grant read *, write * on entity AWSBedrockImplementation.GptRequest to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.GptMessage to AWSBedrockImplementation.Admin;
+
+create export mapping AWSBedrockImplementation.EXM_GptRequest
+  folder 'GptRequest/Resources/ExportMappings'
+  with json structure AWSBedrockImplementation.JSON_GptRequest
+{
+  AWSBedrockImplementation.GptRequest {
+    max_tokens = Max_tokens,
+    reasoning_effort = Reasoning_effort,
+    AWSBedrockImplementation.GptMessage_GptRequest/AWSBedrockImplementation.GptMessage as messages {
+      role = Role,
+      content = Content
+    }
+  }
+};
+
+-- Response --------------------------------------------------------------------------------------------
+create json structure AWSBedrockImplementation.JSON_GptResponse
+  folder 'GptRequest/Resources/JSONStructures'
+  sample $${
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "openai.gpt-oss-120b-1:0",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "Answer text", "reasoning_content": "Reasoning text" },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 35, "completion_tokens": 58, "total_tokens": 93 }
+}$$
+  CUSTOM NAME map (
+    'id' as '_id',
+    'object' as '_object'
+  );
+
+create non-persistent entity AWSBedrockImplementation.GptResponse (
+  _id: String(unlimited),
+  _object: String(unlimited),
+  Model: String(unlimited)
+);
+create non-persistent entity AWSBedrockImplementation.GptChoice (
+  Finish_reason: String(unlimited)
+);
+create non-persistent entity AWSBedrockImplementation.GptChoiceMessage (
+  Role: String(unlimited),
+  Content: String(unlimited),
+  Reasoning_content: String(unlimited)
+);
+create non-persistent entity AWSBedrockImplementation.GptUsage (
+  Prompt_tokens: Integer default 0,
+  Completion_tokens: Integer default 0,
+  Total_tokens: Integer default 0
+);
+create association AWSBedrockImplementation.GptChoice_GptResponse from AWSBedrockImplementation.GptChoice to AWSBedrockImplementation.GptResponse;
+create association AWSBedrockImplementation.GptChoiceMessage_GptChoice from AWSBedrockImplementation.GptChoiceMessage to AWSBedrockImplementation.GptChoice;
+create association AWSBedrockImplementation.GptUsage_GptResponse from AWSBedrockImplementation.GptUsage to AWSBedrockImplementation.GptResponse;
+grant read *, write * on entity AWSBedrockImplementation.GptResponse to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.GptChoice to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.GptChoiceMessage to AWSBedrockImplementation.Admin;
+grant read *, write * on entity AWSBedrockImplementation.GptUsage to AWSBedrockImplementation.Admin;
+
+create import mapping AWSBedrockImplementation.IMM_GptResponse
+  folder 'GptRequest/Resources/ImportMappings'
+  with json structure AWSBedrockImplementation.JSON_GptResponse
+{
+  create AWSBedrockImplementation.GptResponse {
+    _id = id,
+    _object = object,
+    Model = model,
+    create AWSBedrockImplementation.GptChoice_GptResponse/AWSBedrockImplementation.GptChoice = choices {
+      Finish_reason = finish_reason,
+      create AWSBedrockImplementation.GptChoiceMessage_GptChoice/AWSBedrockImplementation.GptChoiceMessage = message {
+        Role = role,
+        Content = content,
+        Reasoning_content = reasoning_content
+      }
+    },
+    create AWSBedrockImplementation.GptUsage_GptResponse/AWSBedrockImplementation.GptUsage = usage {
+      Prompt_tokens = prompt_tokens,
+      Completion_tokens = completion_tokens,
+      Total_tokens = total_tokens
+    }
+  }
+};

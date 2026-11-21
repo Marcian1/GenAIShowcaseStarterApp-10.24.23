@@ -7,8 +7,10 @@ package awsbedrockimplementation.proxies;
 public enum ENUM_ModelFamily
 {
 	Claude("c4b2fe59-f47a-4bf4-aa8b-b40c26ca60bc"),
+	OpenAI("78ad9187-8c84-4588-9670-66f70c107d59"),
 	Cohere("63e3764a-c933-4729-91bb-1c69eede2683"),
-	Titan("79a23c0b-5317-42d7-9638-9b44c25689c0");
+	Titan("79a23c0b-5317-42d7-9638-9b44c25689c0"),
+	Rerank("b60f3478-c2a0-49ca-aaf9-66316e3beb41");
 
 	private final java.lang.String i18nCaptionKey;
 	

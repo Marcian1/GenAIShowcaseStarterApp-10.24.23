@@ -1,0 +1,42 @@
+/**
+ * @test Without a reranker the best TopN chunks come back sorted by vector similarity
+ * @expect $result = '2|high,mid,|false'
+ */
+$result = CALL MICROFLOW BedrockTests.RerankNoModelOrder();
+/
+
+/**
+ * @test A failing reranker falls back to the vector order and says so
+ * @expect contains($result, '1|high|false|')
+ * @expect contains($result, 'failed')
+ */
+$result = CALL MICROFLOW BedrockTests.RerankFailureFallback();
+/
+
+/**
+ * @test Cohere Rerank 3.5 is seeded and selected by default
+ * @expect $result = 'cohere.rerank-v3-5:0'
+ */
+$result = CALL MICROFLOW BedrockTests.DefaultRerankModelId();
+/
+
+/**
+ * @test IsRerankEnabled is true with a reranker and false without, and carries the model id
+ * @expect $result = 'true|false|cohere.rerank-v3-5:0'
+ */
+$result = CALL MICROFLOW BedrockTests.RerankEnabledFlag();
+/
+
+/**
+ * @test Rerank family is not a chat family
+ * @expect $result = false
+ */
+$result = CALL MICROFLOW BedrockTests.IsChatFor(Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank);
+/
+
+/**
+ * @test Trying a Rerank model through the dispatcher does not fail
+ * @expect $result = 'ok'
+ */
+$result = CALL MICROFLOW BedrockTests.DispatchRerankDoesNotFail();
+/

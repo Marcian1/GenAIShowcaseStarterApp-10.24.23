@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * Carries one search from the question to the prompt: search text, max results, minimum similarity, prompts and the ticket data sent to the chat model.
+ */
 public class PageHelper implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject pageHelperMendixObject;

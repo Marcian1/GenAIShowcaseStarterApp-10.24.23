@@ -33,15 +33,28 @@ test('STS answers GetCallerIdentity (used by the Test connection button)', async
   assert.match(await r.text(), /<Arn>arn:aws:iam::\d+:assumed-role\/.+<\/Arn>/);
 });
 test('STS rejects unsupported actions', async () => {
-  const r = await fetch(BASE + '/', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'Action=DeleteEverything' });
+  const r = await fetch(BASE + '/', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'Action=GetSessionToken' });
   assert.equal(r.status, 400);
 });
 test('Bedrock rejects unsigned calls', async () => {
   assert.equal((await fetch(BASE + '/foundation-models')).status, 403);
 });
-test('ListFoundationModels returns the three demo models', async () => {
+test('ListFoundationModels returns the demo models', async () => {
   const j = await (await fetch(BASE + '/foundation-models', { headers: signed() })).json();
-  assert.deepEqual(j.modelSummaries.map(m => m.providerName).sort(), ['Amazon', 'Anthropic', 'Cohere']);
+  assert.deepEqual(j.modelSummaries.map(m => m.providerName).sort(), ['Amazon', 'Anthropic', 'Cohere', 'Cohere', 'OpenAI', 'OpenAI']);
+});
+test('OpenAI gpt-oss invoke uses the chat-completions format', async () => {
+  const r = await post('/model/openai.gpt-oss-120b-1:0/invoke', { messages: [{ role: 'system', content: 'be brief' }, { role: 'user', content: 'hello gpt' }], max_tokens: 100, reasoning_effort: 'high' }, signed());
+  const j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.object, 'chat.completion');
+  assert.equal(j.choices[0].message.role, 'assistant');
+  assert.match(j.choices[0].message.content, /hello gpt/);
+  assert.equal(j.choices[0].finish_reason, 'stop');
+  assert.ok(j.usage.prompt_tokens > 0 && j.usage.completion_tokens > 0);
+});
+test('OpenAI gpt-oss rejects a body without messages', async () => {
+  assert.equal((await post('/model/openai.gpt-oss-20b-1:0/invoke', { prompt: 'x' }, signed())).status, 400);
 });
 test('Anthropic invoke echoes the last user message', async () => {
   const r = await post('/model/eu.anthropic.claude-sonnet-5/invoke', { messages: [{ role: 'user', content: 'hello bedrock' }] }, signed());
@@ -68,4 +81,17 @@ test('similar texts score higher than unrelated texts', async () => {
 });
 test('unknown model gives 404', async () => {
   assert.equal((await post('/model/foo.bar/invoke', {}, signed())).status, 404);
+});
+
+test('Cohere Rerank returns the best documents first with relevance scores', async () => {
+  const r = await post('/model/cohere.rerank-v3-5:0/invoke', { api_version: 2, query: 'printer jams paper', top_n: 2,
+    documents: ['Login page shows a blank screen', 'The printer jams paper every time', 'Invoice export is slow'] }, signed());
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.results.length, 2);
+  assert.equal(j.results[0].index, 1);
+  assert.ok(j.results[0].relevance_score > j.results[1].relevance_score);
+});
+test('Cohere Rerank rejects a body without documents', async () => {
+  assert.equal((await post('/model/cohere.rerank-v3-5:0/invoke', { query: 'x' }, signed())).status, 400);
 });

@@ -1,0 +1,386 @@
+mdl 1;
+
+-- ============================================================================
+-- Reranking: the vector search fetches many candidates, a Cohere Rerank model on Bedrock scores each one
+-- against the question, and only the best few go to the chat model. Replaces the fixed similarity cut-off.
+-- (The query embedding fix, input_type search_query, is in bson-fix-query-input-type.js.)
+-- ============================================================================
+
+-- Domain ---------------------------------------------------------------------------------------------
+create or modify enumeration AWSBedrockImplementation.ENUM_ModelFamily (
+  Claude 'Anthropic Claude (chat)',
+  OpenAI 'OpenAI GPT via Bedrock (chat)',
+  Cohere 'Cohere Embed (embeddings)',
+  Titan 'Amazon Titan Embeddings V2 (embeddings)',
+  Rerank 'Cohere Rerank (reranking)'
+) folder 'BedrockModel';
+
+alter entity AWSBedrockImplementation.Config add attribute RerankCandidates: Integer default 30;
+alter entity AWSBedrockImplementation.Config add attribute RerankModelName: String(200);
+alter entity AWSBedrockImplementation.Config add attribute RerankModelKey: String(300);
+alter entity AWSBedrockImplementation.Config add attribute IsRerankEnabled: Boolean default false;
+alter entity AWSBedrockImplementation.Config add attribute RerankSeeded: Boolean default false;
+
+create association AWSBedrockImplementation.Config_RerankModel
+  from AWSBedrockImplementation.Config to AWSBedrockImplementation.BedrockModel
+  type Reference owner Default on delete set null;
+
+alter entity AWSBedrockImplementation.AskEntry add attribute Reranked: Boolean default false;
+alter entity AWSBedrockImplementation.AskEntry add attribute RerankText: String(unlimited);
+
+-- Java action ----------------------------------------------------------------------------------------
+create or modify java action AWSBedrockImplementation.JA_RerankChunks folder 'Resources'(
+  /** The question of the user. */
+  Query: String,
+  /** The candidate chunks found by the vector search. */
+  Chunks: list of AWSBedrockImplementation.TicketChunk,
+  /** How many chunks to return. */
+  TopN: Integer,
+  /** Bedrock model id of the reranker. Empty means no reranking: the best TopN by vector similarity are returned. */
+  ModelId: String,
+  /** Display name of the reranker, for the note on the answer. */
+  ModelName: String,
+  Config: AWSBedrockImplementation.Config,
+  /** Receives a note about what happened (Reranked, RerankText). */
+  AskEntry: AWSBedrockImplementation.AskEntry
+) returns list of AWSBedrockImplementation.TicketChunk as $Ranked
+as $$
+		java.util.function.Function<java.util.List<awsbedrockimplementation.proxies.TicketChunk>, java.util.List<IMendixObject>> toObjects = list -> {
+			java.util.List<IMendixObject> objects = new java.util.ArrayList<>();
+			for (awsbedrockimplementation.proxies.TicketChunk c : list) { objects.add(c.getMendixObject()); }
+			return objects;
+		};
+		java.util.List<awsbedrockimplementation.proxies.TicketChunk> candidates = Chunks == null
+				? new java.util.ArrayList<>() : new java.util.ArrayList<>(Chunks);
+		int top = TopN == null ? 5 : (int) Math.max(1L, TopN.longValue());
+		// Association retrieval has no guaranteed order: sort by vector similarity first (also the fallback order).
+		candidates.sort((a, b) -> {
+			java.math.BigDecimal x = a.getSimilarity() == null ? java.math.BigDecimal.ZERO : a.getSimilarity();
+			java.math.BigDecimal y = b.getSimilarity() == null ? java.math.BigDecimal.ZERO : b.getSimilarity();
+			return y.compareTo(x);
+		});
+		java.util.List<awsbedrockimplementation.proxies.TicketChunk> fallback =
+				new java.util.ArrayList<>(candidates.subList(0, Math.min(top, candidates.size())));
+		if (ModelId == null || ModelId.isBlank() || candidates.size() < 2) {
+			return toObjects.apply(fallback);
+		}
+		String name = ModelName == null || ModelName.isBlank() ? ModelId : ModelName;
+		try {
+			com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+			com.fasterxml.jackson.databind.node.ObjectNode body = mapper.createObjectNode();
+			body.put("api_version", 2);
+			body.put("query", Query);
+			body.put("top_n", Math.min(top, candidates.size()));
+			com.fasterxml.jackson.databind.node.ArrayNode documents = body.putArray("documents");
+			for (awsbedrockimplementation.proxies.TicketChunk chunk : candidates) {
+				documents.add(chunk.getInputText() == null ? "" : chunk.getInputText());
+			}
+			String response = awsbedrockimplementation.impl.BedrockSupport.invoke(
+					Config.getBedrockRegion(getContext()), ModelId.trim(), body.toString(), null, null);
+			com.fasterxml.jackson.databind.JsonNode results = mapper.readTree(response).path("results");
+			java.util.List<awsbedrockimplementation.proxies.TicketChunk> ranked = new java.util.ArrayList<>();
+			if (results.isArray()) {
+				for (com.fasterxml.jackson.databind.JsonNode r : results) {
+					int index = r.path("index").asInt(-1);
+					if (index < 0 || index >= candidates.size() || ranked.size() >= top) {
+						continue;
+					}
+					awsbedrockimplementation.proxies.TicketChunk chunk = candidates.get(index);
+					// The score shown next to a source is now the relevance score of the reranker.
+					chunk.getMendixObject().setValue(getContext(), "Similarity",
+							java.math.BigDecimal.valueOf(r.path("relevance_score").asDouble(0)));
+					ranked.add(chunk);
+				}
+				ranked.sort((a, b) -> b.getSimilarity().compareTo(a.getSimilarity()));
+			}
+			if (ranked.isEmpty()) {
+				throw new RuntimeException("The reranker returned no results.");
+			}
+			if (AskEntry != null) {
+				AskEntry.getMendixObject().setValue(getContext(), "Reranked", true);
+				AskEntry.getMendixObject().setValue(getContext(), "RerankText",
+						"Reranked " + candidates.size() + " candidates with " + name + ", kept the best " + ranked.size() + ".");
+			}
+			return toObjects.apply(ranked);
+		} catch (Exception e) {
+			// Never log the question or the ticket text.
+			awsbedrockimplementation.impl.BedrockSupport.LOG.warn("Reranking with " + ModelId + " failed, using the vector order: "
+					+ e.getClass().getSimpleName());
+			if (AskEntry != null) {
+				AskEntry.getMendixObject().setValue(getContext(), "Reranked", false);
+				AskEntry.getMendixObject().setValue(getContext(), "RerankText",
+						"Reranking with " + name + " failed, so the tickets are in vector-similarity order. Check the model and region.");
+			}
+			return toObjects.apply(fallback);
+		}
+$$;
+
+-- Status ---------------------------------------------------------------------------------------------
+create or modify microflow AWSBedrockImplementation.SUB_Config_RefreshStatus (
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Config'
+begin
+  retrieve $TicketList from AWSBedrockImplementation.Ticket;
+  $TicketCount = count $TicketList;
+  declare $StaleCount Integer = $TicketCount;
+  if $Config/ChunksCreatedAt != empty then
+    retrieve $StaleList from AWSBedrockImplementation.Ticket
+    where ChangedDateTime > $Config/ChunksCreatedAt;
+    $StaleListCount = count $StaleList;
+    set $StaleCount = $StaleListCount;
+  end if;
+  if $StaleCount = 0 and $Config/ChunkCount > 0 and $Config/ChunkCount != $TicketCount then
+    set $StaleCount = abs($Config/ChunkCount - $TicketCount);
+  end if;
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  retrieve $RerankModel from $Config/AWSBedrockImplementation.Config_RerankModel;
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  declare $ChatName String = '';
+  declare $ChatKey String = '';
+  if $ChatModel != empty then
+    set $ChatName = $ChatModel/Name;
+    set $ChatKey = $ChatModel/ModelId;
+  end if;
+  declare $RerankName String = '';
+  declare $RerankKey String = '';
+  if $RerankModel != empty then
+    set $RerankName = $RerankModel/Name;
+    set $RerankKey = $RerankModel/ModelId;
+  end if;
+  declare $EmbeddingName String = '';
+  declare $EmbeddingKey String = '';
+  declare $EmbeddingDimension Integer = 0;
+  declare $KnowledgeBaseReady Boolean = false;
+  if $EmbeddingModel != empty then
+    set $EmbeddingName = $EmbeddingModel/Name;
+    set $EmbeddingKey = $EmbeddingModel/ModelId;
+    set $EmbeddingDimension = $EmbeddingModel/Dimension;
+    if $Config/ChunkCount > 0 and $Config/ChunksModelId = $EmbeddingModel/ModelId and $StaleCount = 0 then
+      set $KnowledgeBaseReady = true;
+    end if;
+  end if;
+  declare $DatabaseName String = '';
+  if $Database != empty then
+    set $DatabaseName = $Database/DisplayName;
+  end if;
+  declare $EncryptionReady Boolean = @Encryption.EncryptionKey != '';
+  declare $DatabaseReady Boolean = $Database != empty and $Config/PgTestOk;
+  declare $ReadyCount Integer = (if $Config/AwsTestOk then 1 else 0) + (if $EncryptionReady then 1 else 0) + (if $DatabaseReady then 1 else 0) + (if $ChatModel != empty then 1 else 0) + (if $EmbeddingModel != empty then 1 else 0) + (if $TicketCount > 0 then 1 else 0) + (if $KnowledgeBaseReady then 1 else 0);
+  change $Config (TicketCount = $TicketCount, StaleTicketCount = $StaleCount, ChatModelName = $ChatName, ChatModelKey = $ChatKey, EmbeddingModelName = $EmbeddingName, EmbeddingModelKey = $EmbeddingKey, EmbeddingDimension = $EmbeddingDimension, RerankModelName = $RerankName, RerankModelKey = $RerankKey, IsRerankEnabled = $RerankModel != empty, DatabaseName = $DatabaseName, IsEncryptionReady = $EncryptionReady, IsDatabaseReady = $DatabaseReady, IsChatReady = $ChatModel != empty, IsEmbeddingReady = $EmbeddingModel != empty, IsTicketsReady = $TicketCount > 0, IsKnowledgeBaseReady = $KnowledgeBaseReady, ReadyCount = $ReadyCount);
+  commit $Config refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_Config_RefreshStatus to AWSBedrockImplementation.Admin;
+
+-- Seed: add the Cohere Rerank model once, and select it ------------------------------------------------
+create or modify microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults ()
+folder 'BedrockModel'
+begin
+  retrieve $ModelList from AWSBedrockImplementation.BedrockModel;
+  $ModelCount = count $ModelList;
+  if $ModelCount = 0 then
+    $Claude = create AWSBedrockImplementation.BedrockModel (Name = 'Claude Sonnet 5', ModelId = 'eu.anthropic.claude-sonnet-5', Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.high) commit;
+    $Gpt = create AWSBedrockImplementation.BedrockModel (Name = 'GPT OSS 120B', ModelId = 'openai.gpt-oss-120b-1:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.medium) commit;
+    $Cohere = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Embed v4', ModelId = 'eu.cohere.embed-v4:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere, Dimension = 1024, InputType = AWSBedrockImplementation.ENUM_CohereInputType.search_document, Truncate = AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT) commit;
+    $Titan = create AWSBedrockImplementation.BedrockModel (Name = 'Titan Text Embeddings V2', ModelId = 'amazon.titan-embed-text-v2:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan, Dimension = 1024, Normalize = true) commit;
+  end if;
+  retrieve $SeedConfig from AWSBedrockImplementation.Config
+    first;
+  if $SeedConfig != empty and not($SeedConfig/RerankSeeded) then
+    retrieve $RerankList from AWSBedrockImplementation.BedrockModel
+    where Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank
+    first;
+    if $RerankList = empty then
+      $Rerank = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Rerank 3.5', ModelId = 'cohere.rerank-v3-5:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank) commit;
+      change $SeedConfig (AWSBedrockImplementation.Config_RerankModel = $Rerank);
+    end if;
+    change $SeedConfig (RerankSeeded = true);
+    commit $SeedConfig;
+  end if;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults to AWSBedrockImplementation.Admin;
+
+-- Try-out: a reranker has nothing to try in the pop-up -------------------------------------------------
+drop microflow AWSBedrockImplementation.SUB_TrySession_Dispatch;
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_Dispatch (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  case $BedrockModel/Family
+    when Claude then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendClaude(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when OpenAI then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendGpt(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Cohere then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendCohere(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Titan then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendTitan(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Rerank then
+      log warning node 'AWSBedrockImplementation' 'A reranking model cannot be tried in the pop-up. It is used by the Ask tickets tab.';
+    when (empty) then
+      log warning node 'AWSBedrockImplementation' 'The selected model has no family.';
+  end case;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_TrySession_Dispatch to AWSBedrockImplementation.Admin;
+
+-- Ask: fetch candidates, rerank, keep the best ---------------------------------------------------------
+drop microflow AWSBedrockImplementation.ACT_Ask;
+create or modify microflow AWSBedrockImplementation.ACT_Ask (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  if $AskSession/Question = empty or trim($AskSession/Question) = '' then
+    validation feedback $AskSession/Question message 'Write a question first';
+    return;
+  end if;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $Database = empty or $Config/ChunkCount = 0 then
+    show message 'The knowledge base is empty. Create the chunks on the Tickets tab first.' type Error blocking;
+    return;
+  end if;
+  declare $StartedAt DateTime = [%CurrentDateTime%];
+  declare $UseRerank Boolean = $Config/IsRerankEnabled and $Config/RerankModelKey != '';
+  declare $Candidates Integer = $AskSession/MaxTickets;
+  if $UseRerank and $Config/RerankCandidates > $AskSession/MaxTickets then
+    set $Candidates = $Config/RerankCandidates;
+  end if;
+  declare $MinimumSimilarity Decimal = $AskSession/Strictness;
+  if $UseRerank then
+    set $MinimumSimilarity = 0;
+  end if;
+  $PageHelper = create AWSBedrockImplementation.PageHelper (SearchItem = $AskSession/Question, UserPrompt = $AskSession/Question, SystemPrompt = $AskSession/Instructions, MaxResults = $Candidates, MinimumSimilarity = $MinimumSimilarity);
+  call microflow AWSBedrockImplementation.ACT_Pagehelper_Send_SearchItem(PageHelper = $PageHelper);
+  retrieve $CandidateList from $PageHelper/AWSBedrockImplementation.TicketChunk_PageHelper;
+  $AskEntry = create AWSBedrockImplementation.AskEntry (Question = $AskSession/Question, CreatedAt = [%CurrentDateTime%], ModelName = $ChatModel/Name, StrictnessUsed = $AskSession/Strictness, StrictnessText = $AskSession/StrictnessLabel, SourceCount = 0);
+  add $AskEntry to $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  change $AskSession (AnswerCount = $AskSession/AnswerCount + 1);
+  declare $RerankKeyToUse String = '';
+  if $UseRerank then
+    set $RerankKeyToUse = $Config/RerankModelKey;
+  end if;
+  $ChunkList = call java action AWSBedrockImplementation.JA_RerankChunks(Query = $AskSession/Question, Chunks = $CandidateList, TopN = $AskSession/MaxTickets, ModelId = $RerankKeyToUse, ModelName = $Config/RerankModelName, Config = $Config, AskEntry = $AskEntry);
+  $FoundCount = count $ChunkList;
+  change $AskEntry (SourceCount = $FoundCount);
+  if $FoundCount = 0 then
+    change $AskEntry (NoMatch = true);
+  else
+    declare $Context String = '';
+    loop $TicketChunk in $ChunkList
+    begin
+      $ContextText = call microflow AWSBedrockImplementation.SUB_AskEntry_AddSource(AskEntry = $AskEntry, TicketChunk = $TicketChunk, Number = $currentIndex + 1);
+      set $Context = $Context + $ContextText + '
+
+';
+    end loop;
+    change $PageHelper (TicketData = $Context);
+    call microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send(PageHelper = $PageHelper);
+    if $PageHelper/PromptResponse = empty then
+      change $AskEntry (ErrorText = 'The model did not return an answer. Check the connection and the chat model.');
+    else
+      change $AskEntry (Answer = $PageHelper/PromptResponse, HasAnswer = true, SentToModel = $Context);
+    end if;
+  end if;
+  change $AskEntry (Seconds = millisecondsBetween($StartedAt, [%CurrentDateTime%]) div 1000);
+  change $AskSession (Question = empty) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_Ask to AWSBedrockImplementation.Admin;
+
+-- UI: models tab ---------------------------------------------------------------------------------------
+alter snippet AWSBedrockImplementation.SNIP_Models {
+  replace familyLabel with {
+    dynamictext familyLabel (
+      Content: '{1}',
+      ContentParams: ({1} = if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'Claude' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then 'GPT' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then 'Cohere' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank then 'Rerank' else 'Titan'),
+      Class: 'label',
+      DynamicClasses: if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'label-primary' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then 'label-info' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then 'label-success' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank then 'label-default' else 'label-warning'
+    )
+  };
+  replace modelSettings with {
+    dynamictext modelSettings (
+      Content: '{1}',
+      ContentParams: ({1} = if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude or $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then 'max ' + toString($currentObject/MaxTokens) + ' tokens · effort ' + getKey($currentObject/Effort) else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then toString($currentObject/Dimension) + ' dims · ' + getKey($currentObject/InputType) else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank then 'scores question and ticket pairs' else toString($currentObject/Dimension) + ' dims · ' + (if $currentObject/Normalize then 'normalized' else 'raw')),
+      Class: 'bedrock-mono'
+    )
+  };
+  insert after inUseEmbeddings {
+    dynamictext inUseRerank (
+      Content: 'Reranker',
+      Class: 'bedrock-badge bedrock-badge-ok',
+      Visible: $currentObject/ModelId = $Config/RerankModelKey
+    )
+  };
+  set (Visible: $currentObject/Family != AWSBedrockImplementation.ENUM_ModelFamily.Rerank) on btnTryModel;
+  insert after lgPickers {
+    layoutgrid lgRerankPicker {
+      row {
+        column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+          combobox cmbRerankModel (
+            Label: 'Reranking model (optional)',
+            Attribute: Config_RerankModel,
+            DataSource: database from AWSBedrockImplementation.BedrockModel where [Family = 'Rerank'] sort by Name asc,
+            CaptionAttribute: Name,
+            OnChange: call microflow AWSBedrockImplementation.ACT_Config_Commit
+          )
+          dynamictext txtRerankModelId (
+            Content: '{1}',
+            ContentParams: ({1} = if $Config/IsRerankEnabled then $Config/RerankModelKey else 'Off: tickets are filtered with the match strictness setting'),
+            Class: 'bedrock-hint bedrock-mono'
+          )
+        }
+        column (DesktopWidth: 6, TabletWidth: 12, PhoneWidth: 12) {
+          textbox txtRerankCandidates (
+            Label: 'Candidates to rerank',
+            Attribute: RerankCandidates,
+            Visible: $Config/IsRerankEnabled
+          )
+          dynamictext txtRerankCandidatesHint (
+            Content: 'The vector search fetches this many tickets. The reranker keeps the best ones (Tickets to use, set on the Ask tickets tab).',
+            Class: 'bedrock-hint',
+            Visible: $Config/IsRerankEnabled
+          )
+        }
+      }
+    }
+  };
+};
+
+-- UI: ask tab ------------------------------------------------------------------------------------------
+alter snippet AWSBedrockImplementation.SNIP_AskTickets {
+  insert after txtAskEmbedding {
+    dynamictext txtAskRerank (
+      Content: 'Rerank: {1}',
+      ContentParams: ({1} = $Config/RerankModelName),
+      Class: 'bedrock-badge bedrock-badge-ok',
+      Visible: $Config/IsRerankEnabled
+    )
+  };
+  set (Visible: not($Config/IsRerankEnabled)) on sldStrictness;
+  set (Visible: not($Config/IsRerankEnabled)) on txtStrictnessLabel;
+  insert before sldStrictness {
+    dynamictext txtRerankInstead (
+      Content: 'Reranking is on. The reranker scores the {1} closest tickets against your question and keeps the best ones, so no match strictness is needed.',
+      ContentParams: ({1} = toString($Config/RerankCandidates)),
+      Class: 'bedrock-hint',
+      Visible: $Config/IsRerankEnabled
+    )
+  };
+  insert after txtEntryMeta {
+    dynamictext txtEntryRerank (
+      Content: '{1}',
+      ContentParams: ({1} = $currentObject/RerankText),
+      Class: 'bedrock-hint',
+      Visible: $currentObject/RerankText != empty
+    )
+  };
+};

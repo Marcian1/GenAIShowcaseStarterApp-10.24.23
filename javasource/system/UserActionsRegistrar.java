@@ -53,6 +53,7 @@ public class UserActionsRegistrar
     registrator.registerUserAction(awsbedrockimplementation.actions.JA_BedrockTestConnection.class);
     registrator.registerUserAction(awsbedrockimplementation.actions.JA_EmbeddingResponse_Summary.class);
     registrator.registerUserAction(awsbedrockimplementation.actions.JA_ListFoundationModels.class);
+    registrator.registerUserAction(awsbedrockimplementation.actions.JA_RerankChunks.class);
     registrator.registerUserAction(communitycommons.actions.Base64Decode.class);
     registrator.registerUserAction(communitycommons.actions.Base64DecodeToFile.class);
     registrator.registerUserAction(communitycommons.actions.Base64Encode.class);

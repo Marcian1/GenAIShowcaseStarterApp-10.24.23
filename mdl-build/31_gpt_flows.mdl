@@ -1,0 +1,120 @@
+mdl 1;
+
+/** Sends the prompt to a GPT (OpenAI gpt-oss) model on Bedrock and stores the answer, token counts and raw JSON on the try-out. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_SendGpt (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  $GptRequest = create AWSBedrockImplementation.GptRequest (Max_tokens = $TrySession/MaxTokens, Reasoning_effort = getKey($TrySession/Effort));
+  $SystemMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'system', Content = if $TrySession/System = empty or trim($TrySession/System) = '' then 'You are a helpful assistant.' else $TrySession/System);
+  $UserMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'user', Content = $TrySession/Input);
+  $Request = export to mapping AWSBedrockImplementation.EXM_GptRequest($GptRequest);
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config);
+  $GptResponse = import from mapping AWSBedrockImplementation.IMM_GptResponse($Response);
+  retrieve $ChoiceList from $GptResponse/AWSBedrockImplementation.GptChoice_GptResponse;
+  $Choice = head $ChoiceList;
+  retrieve $ChoiceMessageList from $Choice/AWSBedrockImplementation.GptChoiceMessage_GptChoice;
+  $ChoiceMessage = head $ChoiceMessageList;
+  retrieve $UsageList from $GptResponse/AWSBedrockImplementation.GptUsage_GptResponse;
+  $Usage = head $UsageList;
+  change $TrySession (Output = $ChoiceMessage/Content, InputTokens = $Usage/Prompt_tokens, OutputTokens = $Usage/Completion_tokens, RawRequest = $Request, RawResponse = $Response);
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_TrySession_SendGpt to AWSBedrockImplementation.Admin;
+
+/** Same as the Claude prompt for the ticket Q&A, but for a GPT chat model. Returns the answer text. */
+create or modify microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt (
+  $PageHelper: AWSBedrockImplementation.PageHelper,
+  $Config: AWSBedrockImplementation.Config,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'Ticket'
+begin
+  $GptRequest = create AWSBedrockImplementation.GptRequest (Max_tokens = $BedrockModel/MaxTokens, Reasoning_effort = getKey($BedrockModel/Effort));
+  $UserMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'user', Content = $PageHelper/SystemPrompt + '
+' + $PageHelper/TicketData + '
+' + $PageHelper/UserPrompt);
+  $Request = export to mapping AWSBedrockImplementation.EXM_GptRequest($GptRequest) on error without rollback begin
+    show message 'Export mapping error!
+
+LatestMessage:
+{1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config) on error without rollback begin
+    show message 'Invoke model error!
+
+LatestMessage:
+{1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  $GptResponse = import from mapping AWSBedrockImplementation.IMM_GptResponse($Response) on error without rollback begin
+    show message 'Import mapping error!
+
+LatestMessage:
+{1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  retrieve $ChoiceList from $GptResponse/AWSBedrockImplementation.GptChoice_GptResponse;
+  $Choice = head $ChoiceList;
+  retrieve $ChoiceMessageList from $Choice/AWSBedrockImplementation.GptChoiceMessage_GptChoice;
+  $ChoiceMessage = head $ChoiceMessageList;
+  change $PageHelper (PromptResponse = $ChoiceMessage/Content) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.SUB_TrySession_Dispatch;
+
+/** Picks the request builder that matches the family of the selected model. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_Dispatch (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  case $BedrockModel/Family
+    when Claude then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendClaude(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when OpenAI then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendGpt(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Cohere then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendCohere(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when Titan then
+      call microflow AWSBedrockImplementation.SUB_TrySession_SendTitan(TrySession = $TrySession, BedrockModel = $BedrockModel, Config = $Config);
+    when (empty) then
+      log warning node 'AWSBedrockImplementation' 'The selected model has no family.';
+  end case;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_TrySession_Dispatch to AWSBedrockImplementation.Admin;
+
+/** Fills the try-out settings from the defaults of the selected model and clears the previous result. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  retrieve $BedrockModel from $TrySession/AWSBedrockImplementation.TrySession_BedrockModel;
+  change $TrySession (
+    ModelFamily = $BedrockModel/Family,
+    MaxTokens = $BedrockModel/MaxTokens,
+    Effort = $BedrockModel/Effort,
+    Dimension = $BedrockModel/Dimension,
+    InputType = $BedrockModel/InputType,
+    Truncate = $BedrockModel/Truncate,
+    Normalize = $BedrockModel/Normalize,
+    IsChat = ($BedrockModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude or $BedrockModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI),
+    HasResult = false,
+    Output = empty,
+    VectorPreview = empty,
+    RawRequest = empty,
+    RawResponse = empty
+  ) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults to AWSBedrockImplementation.Admin;

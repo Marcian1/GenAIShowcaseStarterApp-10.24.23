@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * A ticket chunk read from the pgvector knowledge base: text, vector and similarity. After reranking, Similarity holds the relevance score of the reranker.
+ */
 public class TicketChunk extends genaicommons.proxies.KnowledgeBaseChunk
 {
 	/**

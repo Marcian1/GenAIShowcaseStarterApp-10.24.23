@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * Request body for Claude (messages format). Exported to JSON by EXM_AnthropicRequest.
+ */
 public class AnthropicRequest implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject anthropicRequestMendixObject;

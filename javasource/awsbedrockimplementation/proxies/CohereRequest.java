@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * Request body for Cohere Embed: texts, input type (search_document when indexing, search_query for questions), dimension and truncation.
+ */
 public class CohereRequest implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject cohereRequestMendixObject;

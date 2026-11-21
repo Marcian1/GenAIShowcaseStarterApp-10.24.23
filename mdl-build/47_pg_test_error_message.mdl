@@ -1,0 +1,42 @@
+mdl 1;
+
+-- Test on a vector database showed the generic "An error occurred, please contact your system administrator" when the connection test raised an
+-- exception (for example an unreadable stored password or a JDBC error). The exception is now caught and its message is shown.
+drop microflow AWSBedrockImplementation.ACT_PgDatabase_Test;
+/** Tests a pgvector database (connection and vector extension). Records the result when it is the selected database. Shows the reason when the test itself fails. */
+create or modify microflow AWSBedrockImplementation.ACT_PgDatabase_Test (
+  $DatabaseConfiguration: PgVectorKnowledgeBase.DatabaseConfiguration
+)
+folder 'Config'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  declare $Success Boolean = false;
+  declare $Message String = 'Could not connect. Check the JDBC URL, user and password.';
+  $Connected = call microflow PgVectorKnowledgeBase.DatabaseConfiguration_TestConnection(DatabaseConfiguration = $DatabaseConfiguration) on error without rollback begin
+    show message 'The connection test could not run: {1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  if $Connected then
+    set $Message = 'Connected, but the pgvector extension could not be created.';
+    $ExtensionReady = call microflow PgVectorKnowledgeBase.DatabaseConfiguration_CreateExtension(DatabaseConfiguration = $DatabaseConfiguration) on error without rollback begin
+      show message 'Connected, but the pgvector extension could not be checked: {1}' type Error with ({1} = $latestError/Message) blocking;
+      return;
+    end error;
+    if $ExtensionReady then
+      set $Success = true;
+      set $Message = 'Connected, and the pgvector extension is available.';
+    end if;
+  end if;
+  retrieve $SelectedDatabase from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  if $SelectedDatabase = $DatabaseConfiguration then
+    change $Config (PgTestOk = $Success, PgTestedAt = [%CurrentDateTime%]);
+    call microflow AWSBedrockImplementation.SUB_Config_RefreshStatus(Config = $Config);
+  end if;
+  if $Success then
+    show message '{1}' type Information with ({1} = $Message) blocking;
+  else
+    show message '{1}' type Error with ({1} = $Message) blocking;
+  end if;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_PgDatabase_Test to AWSBedrockImplementation.Admin;

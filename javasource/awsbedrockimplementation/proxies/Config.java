@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * The one settings object of the demo: AWS region and guardrail, test results, the selected chat, embedding and reranking models, the vector database, and the setup status and counts that the page shows. SUB_Config_RefreshStatus keeps the status attributes up to date.
+ */
 public class Config implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject configMendixObject;
@@ -46,8 +49,14 @@ public class Config implements com.mendix.systemwideinterfaces.core.IEntityProxy
 		EmbeddingModelKey("EmbeddingModelKey"),
 		EmbeddingDimension("EmbeddingDimension"),
 		DatabaseName("DatabaseName"),
+		RerankCandidates("RerankCandidates"),
+		RerankModelName("RerankModelName"),
+		RerankModelKey("RerankModelKey"),
+		IsRerankEnabled("IsRerankEnabled"),
+		RerankPicked("RerankPicked"),
 		Config_ChatModel("AWSBedrockImplementation.Config_ChatModel"),
 		Config_EmbeddingModel("AWSBedrockImplementation.Config_EmbeddingModel"),
+		Config_RerankModel("AWSBedrockImplementation.Config_RerankModel"),
 		Config_DatabaseConfiguration("AWSBedrockImplementation.Config_DatabaseConfiguration");
 
 		private final java.lang.String metaName;
@@ -1046,6 +1055,186 @@ public class Config implements com.mendix.systemwideinterfaces.core.IEntityProxy
 	}
 
 	/**
+	 * @return value of RerankCandidates
+	 */
+	public final java.lang.Integer getRerankCandidates()
+	{
+		return getRerankCandidates(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of RerankCandidates
+	 */
+	public final java.lang.Integer getRerankCandidates(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.Integer) getMendixObject().getValue(context, MemberNames.RerankCandidates.toString());
+	}
+
+	/**
+	 * Set value of RerankCandidates
+	 * @param rerankcandidates
+	 */
+	public final void setRerankCandidates(java.lang.Integer rerankcandidates)
+	{
+		setRerankCandidates(getContext(), rerankcandidates);
+	}
+
+	/**
+	 * Set value of RerankCandidates
+	 * @param context
+	 * @param rerankcandidates
+	 */
+	public final void setRerankCandidates(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Integer rerankcandidates)
+	{
+		getMendixObject().setValue(context, MemberNames.RerankCandidates.toString(), rerankcandidates);
+	}
+
+	/**
+	 * @return value of RerankModelName
+	 */
+	public final java.lang.String getRerankModelName()
+	{
+		return getRerankModelName(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of RerankModelName
+	 */
+	public final java.lang.String getRerankModelName(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.String) getMendixObject().getValue(context, MemberNames.RerankModelName.toString());
+	}
+
+	/**
+	 * Set value of RerankModelName
+	 * @param rerankmodelname
+	 */
+	public final void setRerankModelName(java.lang.String rerankmodelname)
+	{
+		setRerankModelName(getContext(), rerankmodelname);
+	}
+
+	/**
+	 * Set value of RerankModelName
+	 * @param context
+	 * @param rerankmodelname
+	 */
+	public final void setRerankModelName(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String rerankmodelname)
+	{
+		getMendixObject().setValue(context, MemberNames.RerankModelName.toString(), rerankmodelname);
+	}
+
+	/**
+	 * @return value of RerankModelKey
+	 */
+	public final java.lang.String getRerankModelKey()
+	{
+		return getRerankModelKey(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of RerankModelKey
+	 */
+	public final java.lang.String getRerankModelKey(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.String) getMendixObject().getValue(context, MemberNames.RerankModelKey.toString());
+	}
+
+	/**
+	 * Set value of RerankModelKey
+	 * @param rerankmodelkey
+	 */
+	public final void setRerankModelKey(java.lang.String rerankmodelkey)
+	{
+		setRerankModelKey(getContext(), rerankmodelkey);
+	}
+
+	/**
+	 * Set value of RerankModelKey
+	 * @param context
+	 * @param rerankmodelkey
+	 */
+	public final void setRerankModelKey(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String rerankmodelkey)
+	{
+		getMendixObject().setValue(context, MemberNames.RerankModelKey.toString(), rerankmodelkey);
+	}
+
+	/**
+	 * @return value of IsRerankEnabled
+	 */
+	public final java.lang.Boolean getIsRerankEnabled()
+	{
+		return getIsRerankEnabled(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of IsRerankEnabled
+	 */
+	public final java.lang.Boolean getIsRerankEnabled(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.Boolean) getMendixObject().getValue(context, MemberNames.IsRerankEnabled.toString());
+	}
+
+	/**
+	 * Set value of IsRerankEnabled
+	 * @param isrerankenabled
+	 */
+	public final void setIsRerankEnabled(java.lang.Boolean isrerankenabled)
+	{
+		setIsRerankEnabled(getContext(), isrerankenabled);
+	}
+
+	/**
+	 * Set value of IsRerankEnabled
+	 * @param context
+	 * @param isrerankenabled
+	 */
+	public final void setIsRerankEnabled(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Boolean isrerankenabled)
+	{
+		getMendixObject().setValue(context, MemberNames.IsRerankEnabled.toString(), isrerankenabled);
+	}
+
+	/**
+	 * @return value of RerankPicked
+	 */
+	public final java.lang.Boolean getRerankPicked()
+	{
+		return getRerankPicked(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of RerankPicked
+	 */
+	public final java.lang.Boolean getRerankPicked(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.Boolean) getMendixObject().getValue(context, MemberNames.RerankPicked.toString());
+	}
+
+	/**
+	 * Set value of RerankPicked
+	 * @param rerankpicked
+	 */
+	public final void setRerankPicked(java.lang.Boolean rerankpicked)
+	{
+		setRerankPicked(getContext(), rerankpicked);
+	}
+
+	/**
+	 * Set value of RerankPicked
+	 * @param context
+	 * @param rerankpicked
+	 */
+	public final void setRerankPicked(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Boolean rerankpicked)
+	{
+		getMendixObject().setValue(context, MemberNames.RerankPicked.toString(), rerankpicked);
+	}
+
+	/**
 	 * @throws com.mendix.core.CoreException
 	 * @return value of Config_ChatModel
 	 */
@@ -1136,6 +1325,53 @@ public class Config implements com.mendix.systemwideinterfaces.core.IEntityProxy
 			getMendixObject().setValue(context, MemberNames.Config_EmbeddingModel.toString(), null);
 		} else {
 			getMendixObject().setValue(context, MemberNames.Config_EmbeddingModel.toString(), config_embeddingmodel.getMendixObject().getId());
+		}
+	}
+
+	/**
+	 * @throws com.mendix.core.CoreException
+	 * @return value of Config_RerankModel
+	 */
+	public final awsbedrockimplementation.proxies.BedrockModel getConfig_RerankModel() throws com.mendix.core.CoreException
+	{
+		return getConfig_RerankModel(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of Config_RerankModel
+	 * @throws com.mendix.core.CoreException
+	 */
+	public final awsbedrockimplementation.proxies.BedrockModel getConfig_RerankModel(com.mendix.systemwideinterfaces.core.IContext context) throws com.mendix.core.CoreException
+	{
+		awsbedrockimplementation.proxies.BedrockModel result = null;
+		com.mendix.systemwideinterfaces.core.IMendixIdentifier identifier = getMendixObject().getValue(context, MemberNames.Config_RerankModel.toString());
+		if (identifier != null) {
+			result = awsbedrockimplementation.proxies.BedrockModel.load(context, identifier);
+		}
+		return result;
+	}
+
+	/**
+	 * Set value of Config_RerankModel
+	 * @param config_rerankmodel
+	 */
+	public final void setConfig_RerankModel(awsbedrockimplementation.proxies.BedrockModel config_rerankmodel)
+	{
+		setConfig_RerankModel(getContext(), config_rerankmodel);
+	}
+
+	/**
+	 * Set value of Config_RerankModel
+	 * @param context
+	 * @param config_rerankmodel
+	 */
+	public final void setConfig_RerankModel(com.mendix.systemwideinterfaces.core.IContext context, awsbedrockimplementation.proxies.BedrockModel config_rerankmodel)
+	{
+		if (config_rerankmodel == null) {
+			getMendixObject().setValue(context, MemberNames.Config_RerankModel.toString(), null);
+		} else {
+			getMendixObject().setValue(context, MemberNames.Config_RerankModel.toString(), config_rerankmodel.getMendixObject().getId());
 		}
 	}
 

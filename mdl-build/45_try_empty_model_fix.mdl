@@ -1,0 +1,20 @@
+mdl 1;
+
+-- Bug: clearing the Model picker in the Try pop-up (the x, or Escape on the picker) raised "An error has occurred while handling the request":
+-- SUB_TrySession_ApplyModelDefaults copied Boolean values from an empty model ("Boolean member can not be set to null").
+-- Without a model it now only clears the previous result.
+/** Fills the try-out settings from the defaults of the selected model and clears the previous result. Without a model it only clears the result. */
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults (
+  $TrySession: AWSBedrockImplementation.TrySession
+)
+folder 'Try'
+begin
+  retrieve $BedrockModel from $TrySession/AWSBedrockImplementation.TrySession_BedrockModel;
+  if $BedrockModel != empty then
+    change $TrySession (ModelFamily = $BedrockModel/Family, MaxTokens = $BedrockModel/MaxTokens, Effort = $BedrockModel/Effort, Dimension = $BedrockModel/Dimension, InputType = $BedrockModel/InputType, Truncate = $BedrockModel/Truncate, Normalize = $BedrockModel/Normalize, IsChat = ($BedrockModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude or $BedrockModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI), HasResult = false, Output = empty, VectorPreview = empty, RawRequest = empty, RawResponse = empty) refresh;
+  else
+    change $TrySession (HasResult = false, Output = empty, VectorPreview = empty, RawRequest = empty, RawResponse = empty) refresh;
+  end if;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults to AWSBedrockImplementation.Admin;

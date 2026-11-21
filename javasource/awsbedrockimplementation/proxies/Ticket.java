@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * A support ticket, the demo data. Each ticket becomes one chunk in the knowledge base.
+ */
 public class Ticket implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject ticketMendixObject;

@@ -20,3 +20,9 @@ bedrock-local-emulator/.runtime/
 
 # Output folder of download-repo.cmd when it is run inside this project
 /GenAIShowcaseStarterApp-10.24.23/
+
+# Test suite artifacts
+tests/ui/node_modules/
+tests/ui/test-results/
+tests/*-results.xml
+.auth.json

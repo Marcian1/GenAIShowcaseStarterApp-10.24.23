@@ -1,0 +1,111 @@
+mdl 1;
+
+-- Domain model tidy-up: GPT payloads get their own area (they were stacked on top of each other), the Ask area moves clear of the
+-- tall Config, Config_RerankModel gets a line, and every entity that a person works with gets a short description.
+
+-- Areas ----------------------------------------------------------------------------------------------
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Setup and models
+Config holds the connection settings, the selected chat, embedding and reranking models, the vector database and the setup status. BedrockModel is one configured model. Ticket and TicketChunk are the demo data.$$,
+  Position: (60, 60),
+  Width: 300
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Try a model
+TrySession is the state of the Try pop-up (not stored).$$,
+  Position: (60, 760),
+  Width: 300
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Ask tickets: a session holds the settings, each answer is an entry with its numbered sources and the rerank note (not stored).$$,
+  Position: (1100, 1000),
+  Width: 1100
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Bedrock payloads, Anthropic Claude, Cohere Embed and Titan Embeddings V2: requests and responses. The export and import mappings turn these into the JSON of the InvokeModel calls, so do not rename them.$$,
+  Position: (60, 1500),
+  Width: 1000
+);
+create or modify annotation in AWSBedrockImplementation (
+  Caption: $$Bedrock payloads, OpenAI GPT (gpt-oss): messages, max_tokens and reasoning_effort go in, choices and usage come out. Do not rename them (mappings).$$,
+  Position: (2200, 1500),
+  Width: 1000
+);
+
+-- Setup and models
+alter entity AWSBedrockImplementation.BedrockModel set position (500, 330);
+alter entity AWSBedrockImplementation.Config set position (1100, 330);
+alter entity AWSBedrockImplementation.Ticket set position (1700, 250);
+alter entity AWSBedrockImplementation.TicketChunk set position (1700, 600);
+alter entity AWSBedrockImplementation.PageHelper set position (2150, 600);
+alter entity AWSBedrockImplementation.ModelHelper set position (2150, 250);
+
+-- Try a model
+alter entity AWSBedrockImplementation.TrySession set position (500, 1100);
+
+-- Ask tickets
+alter entity AWSBedrockImplementation.AskSession set position (1100, 1100);
+alter entity AWSBedrockImplementation.AskEntry set position (1600, 1100);
+alter entity AWSBedrockImplementation.AskSource set position (2100, 1100);
+
+-- Anthropic payloads
+alter entity AWSBedrockImplementation.AnthropicRequest set position (700, 1700);
+alter entity AWSBedrockImplementation.Messages set position (1150, 1580);
+alter entity AWSBedrockImplementation.Message set position (1600, 1580);
+alter entity AWSBedrockImplementation.Thinking set position (1150, 1730);
+alter entity AWSBedrockImplementation.Output_config set position (1150, 1880);
+alter entity AWSBedrockImplementation.AnthropicResponse set position (700, 2300);
+alter entity AWSBedrockImplementation.Content set position (1150, 2300);
+alter entity AWSBedrockImplementation.ContentItem set position (1600, 2300);
+alter entity AWSBedrockImplementation.Usage set position (1150, 2450);
+
+-- GPT payloads (right of the Anthropic ones, same pattern: request on top, response below)
+alter entity AWSBedrockImplementation.GptRequest set position (2200, 1700);
+alter entity AWSBedrockImplementation.GptMessage set position (2650, 1620);
+alter entity AWSBedrockImplementation.GptResponse set position (2200, 2300);
+alter entity AWSBedrockImplementation.GptChoice set position (2650, 2300);
+alter entity AWSBedrockImplementation.GptChoiceMessage set position (3100, 2300);
+alter entity AWSBedrockImplementation.GptUsage set position (2650, 2450);
+
+-- Cohere payloads
+alter entity AWSBedrockImplementation.Embedding_type set position (700, 2900);
+alter entity AWSBedrockImplementation.Embedding_types set position (1150, 2900);
+alter entity AWSBedrockImplementation.CohereRequest set position (1600, 2900);
+alter entity AWSBedrockImplementation.Texts set position (2050, 2800);
+alter entity AWSBedrockImplementation.Text set position (2500, 2800);
+alter entity AWSBedrockImplementation.CohereResponse set position (2500, 3400);
+alter entity AWSBedrockImplementation.Embeddings set position (2050, 3400);
+alter entity AWSBedrockImplementation.Embedding set position (1600, 3400);
+
+-- Titan payloads
+alter entity AWSBedrockImplementation.TitanEmbeddingsV2Request set position (1600, 3850);
+alter entity AWSBedrockImplementation.EmbeddingTypes set position (1150, 3850);
+alter entity AWSBedrockImplementation.EmbeddingType set position (700, 3850);
+
+-- Association lines: straight, touching no other box
+alter association AWSBedrockImplementation.Config_ChatModel set anchor from (0, 25) to (100, 30);
+alter association AWSBedrockImplementation.Config_EmbeddingModel set anchor from (0, 55) to (100, 70);
+alter association AWSBedrockImplementation.Config_RerankModel set anchor from (0, 85) to (100, 95);
+alter association AWSBedrockImplementation.GptMessage_GptRequest set anchor from (0, 50) to (100, 20);
+alter association AWSBedrockImplementation.GptChoice_GptResponse set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.GptChoiceMessage_GptChoice set anchor from (0, 50) to (100, 50);
+alter association AWSBedrockImplementation.GptUsage_GptResponse set anchor from (0, 50) to (100, 80);
+
+-- Descriptions ---------------------------------------------------------------------------------------
+alter entity AWSBedrockImplementation.Config set documentation 'The one settings object of the demo: AWS region and guardrail, test results, the selected chat, embedding and reranking models, the vector database, and the setup status and counts that the page shows. SUB_Config_RefreshStatus keeps the status attributes up to date.';
+alter entity AWSBedrockImplementation.BedrockModel set documentation 'A Bedrock model that can be used by the demo: display name, model id (or inference profile), family and the defaults of that family.';
+alter entity AWSBedrockImplementation.Ticket set documentation 'A support ticket, the demo data. Each ticket becomes one chunk in the knowledge base.';
+alter entity AWSBedrockImplementation.TicketChunk set documentation 'A ticket chunk read from the pgvector knowledge base: text, vector and similarity. After reranking, Similarity holds the relevance score of the reranker.';
+alter entity AWSBedrockImplementation.PageHelper set documentation 'Carries one search from the question to the prompt: search text, max results, minimum similarity, prompts and the ticket data sent to the chat model.';
+alter entity AWSBedrockImplementation.ModelHelper set documentation 'Carries a model name to the older request sender microflows.';
+alter entity AWSBedrockImplementation.TrySession set documentation 'State of the Try pop-up of a model: input, settings, result, timing and the raw request and response. Not stored.';
+alter entity AWSBedrockImplementation.AskSession set documentation 'State of the Ask tickets tab: the question, tickets to use, match strictness and the instructions for the model. Owns the answers. Not stored.';
+alter entity AWSBedrockImplementation.AskEntry set documentation 'One answer on the Ask tickets tab: question, answer, model, timing, the exact text sent to the model and a note about the reranking. Owns the numbered sources.';
+alter entity AWSBedrockImplementation.AskSource set documentation 'One numbered source (ticket) of an answer with its title, snippet and score.';
+alter entity AWSBedrockImplementation.AnthropicRequest set documentation 'Request body for Claude (messages format). Exported to JSON by EXM_AnthropicRequest.';
+alter entity AWSBedrockImplementation.AnthropicResponse set documentation 'Response of Claude. Imported from JSON by IMM_AnthropicResponse.';
+alter entity AWSBedrockImplementation.CohereRequest set documentation 'Request body for Cohere Embed: texts, input type (search_document when indexing, search_query for questions), dimension and truncation.';
+alter entity AWSBedrockImplementation.CohereResponse set documentation 'Response of Cohere Embed with one embedding per text.';
+alter entity AWSBedrockImplementation.TitanEmbeddingsV2Request set documentation 'Request body for Amazon Titan Text Embeddings V2.';
+alter entity AWSBedrockImplementation.GptRequest set documentation 'Request body for OpenAI gpt-oss on Bedrock (chat completions format).';
+alter entity AWSBedrockImplementation.GptResponse set documentation 'Response of OpenAI gpt-oss on Bedrock: choices and token usage.';

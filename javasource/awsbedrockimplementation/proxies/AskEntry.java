@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * One answer on the Ask tickets tab: question, answer, model, timing, the exact text sent to the model and a note about the reranking. Owns the numbered sources.
+ */
 public class AskEntry implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject askEntryMendixObject;
@@ -32,6 +35,8 @@ public class AskEntry implements com.mendix.systemwideinterfaces.core.IEntityPro
 		StrictnessText("StrictnessText"),
 		SourceCount("SourceCount"),
 		SentToModel("SentToModel"),
+		Reranked("Reranked"),
+		RerankText("RerankText"),
 		AskEntry_AskSource("AWSBedrockImplementation.AskEntry_AskSource");
 
 		private final java.lang.String metaName;
@@ -514,6 +519,78 @@ public class AskEntry implements com.mendix.systemwideinterfaces.core.IEntityPro
 	public final void setSentToModel(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String senttomodel)
 	{
 		getMendixObject().setValue(context, MemberNames.SentToModel.toString(), senttomodel);
+	}
+
+	/**
+	 * @return value of Reranked
+	 */
+	public final java.lang.Boolean getReranked()
+	{
+		return getReranked(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of Reranked
+	 */
+	public final java.lang.Boolean getReranked(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.Boolean) getMendixObject().getValue(context, MemberNames.Reranked.toString());
+	}
+
+	/**
+	 * Set value of Reranked
+	 * @param reranked
+	 */
+	public final void setReranked(java.lang.Boolean reranked)
+	{
+		setReranked(getContext(), reranked);
+	}
+
+	/**
+	 * Set value of Reranked
+	 * @param context
+	 * @param reranked
+	 */
+	public final void setReranked(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Boolean reranked)
+	{
+		getMendixObject().setValue(context, MemberNames.Reranked.toString(), reranked);
+	}
+
+	/**
+	 * @return value of RerankText
+	 */
+	public final java.lang.String getRerankText()
+	{
+		return getRerankText(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of RerankText
+	 */
+	public final java.lang.String getRerankText(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.String) getMendixObject().getValue(context, MemberNames.RerankText.toString());
+	}
+
+	/**
+	 * Set value of RerankText
+	 * @param reranktext
+	 */
+	public final void setRerankText(java.lang.String reranktext)
+	{
+		setRerankText(getContext(), reranktext);
+	}
+
+	/**
+	 * Set value of RerankText
+	 * @param context
+	 * @param reranktext
+	 */
+	public final void setRerankText(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String reranktext)
+	{
+		getMendixObject().setValue(context, MemberNames.RerankText.toString(), reranktext);
 	}
 
 	/**

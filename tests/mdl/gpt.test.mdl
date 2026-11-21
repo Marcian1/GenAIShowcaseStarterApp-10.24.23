@@ -1,0 +1,65 @@
+/**
+ * @test GPT request JSON carries messages, max_tokens and reasoning_effort
+ * @expect contains($result, '"max_tokens":50')
+ * @expect contains($result, '"reasoning_effort":"low"')
+ * @expect contains($result, '"role":"user"')
+ * @expect contains($result, '"content":"hi gpt"')
+ */
+$result = CALL MICROFLOW BedrockTests.GptRequestJson(Content = 'hi gpt', Effort = 'low', Max = 50);
+/
+
+/**
+ * @test GPT response is parsed to content and token counts (reasoning_content ignored)
+ * @expect $result = 'Answer text|35|58'
+ */
+$result = CALL MICROFLOW BedrockTests.GptResponseSummary(Json = '{"id":"c1","object":"chat.completion","model":"openai.gpt-oss-120b-1:0","choices":[{"index":0,"message":{"role":"assistant","content":"Answer text","reasoning_content":"why"},"finish_reason":"stop"}],"usage":{"prompt_tokens":35,"completion_tokens":58,"total_tokens":93}}');
+/
+
+/**
+ * @test OpenAI family is a chat family
+ * @expect $result = true
+ */
+$result = CALL MICROFLOW BedrockTests.IsChatFor(Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI);
+/
+
+/**
+ * @test Claude family is a chat family
+ * @expect $result = true
+ */
+$result = CALL MICROFLOW BedrockTests.IsChatFor(Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude);
+/
+
+/**
+ * @test Cohere family is not a chat family
+ * @expect $result = false
+ */
+$result = CALL MICROFLOW BedrockTests.IsChatFor(Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere);
+/
+
+/**
+ * @test Titan family is not a chat family
+ * @expect $result = false
+ */
+$result = CALL MICROFLOW BedrockTests.IsChatFor(Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan);
+/
+
+/**
+ * @test Seeding defaults gives exactly one GPT OSS 120B model
+ * @expect $result = 1
+ */
+$result = CALL MICROFLOW BedrockTests.SeedAndCountGpt();
+/
+
+/**
+ * @test Seeding twice gives exactly one optional Claude Haiku model
+ * @expect $result = 1
+ */
+$result = CALL MICROFLOW BedrockTests.SeedAndCountHaiku();
+/
+
+/**
+ * @test Clearing the model in the Try pop-up does not raise an error
+ * @expect $result = true
+ */
+$result = CALL MICROFLOW BedrockTests.ApplyDefaultsWithoutModel();
+/

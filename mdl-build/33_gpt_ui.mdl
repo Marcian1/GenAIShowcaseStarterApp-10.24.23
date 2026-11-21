@@ -1,0 +1,36 @@
+mdl 1;
+
+-- Pop-up: GPT shows the chat settings (max tokens, effort), not the embedding ones.
+alter page AWSBedrockImplementation.BedrockModel_Edit {
+  set (Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude or $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI) on ctnClaudeSettings;
+  set (Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere or $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan) on ctnEmbeddingSettings;
+  set (Visible: $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere or $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan) on ctnDimensionNote;
+};
+
+-- Models list and chat model picker.
+alter snippet AWSBedrockImplementation.SNIP_Models {
+  replace cmbChatModel with {
+    combobox cmbChatModel (
+      Label: 'Chat model',
+      Attribute: Config_ChatModel,
+      DataSource: database from AWSBedrockImplementation.BedrockModel where [Family = 'Claude' or Family = 'OpenAI'] sort by Name asc,
+      CaptionAttribute: Name,
+      OnChange: call microflow AWSBedrockImplementation.ACT_Config_Commit
+    )
+  };
+  replace familyLabel with {
+    dynamictext familyLabel (
+      Content: '{1}',
+      ContentParams: ({1} = if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'Claude' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then 'GPT' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then 'Cohere' else 'Titan'),
+      Class: 'label',
+      DynamicClasses: if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude then 'label-primary' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then 'label-info' else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then 'label-success' else 'label-warning'
+    )
+  };
+  replace modelSettings with {
+    dynamictext modelSettings (
+      Content: '{1}',
+      ContentParams: ({1} = if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude or $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then 'max ' + toString($currentObject/MaxTokens) + ' tokens · effort ' + getKey($currentObject/Effort) else if $currentObject/Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere then toString($currentObject/Dimension) + ' dims · ' + getKey($currentObject/InputType) else toString($currentObject/Dimension) + ' dims · ' + (if $currentObject/Normalize then 'normalized' else 'raw')),
+      Class: 'bedrock-mono'
+    )
+  };
+};

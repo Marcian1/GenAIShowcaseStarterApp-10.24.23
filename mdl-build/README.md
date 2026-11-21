@@ -11,6 +11,16 @@ They are kept so the changes can be read in one place. The project itself is the
 | `08_rewire.mdl` (made by `rewire.js`) | Existing flows now read the model and database from the Config instead of hardcoded names |
 | `11`, `14`, `16` | Snippets, pop-up pages and the page itself |
 | `10`, `17` | Security grants |
+| `42_haiku.mdl` | Seeds Claude Haiku 5.5 as an optional chat model (by ModelId, so existing apps get it too; Sonnet stays the default) |
+| `43_model_delete_refresh.mdl` | Deleting a model recomputes the setup status, so the badges and pickers no longer show a deleted model until the page is reloaded |
+| `44_try_hide_reranker.mdl` | The Try pop-up no longer lists the reranking model (it cannot be tried) |
+| `45_try_empty_model_fix.mdl` | Clearing the model picker in the Try pop-up no longer raises "An error has occurred while handling the request" |
+| `46_try_send_needs_model.mdl` | The Try pop-up asks for a model instead of showing an empty result when none is picked |
+| `47_pg_test_error_message.mdl` | The Test button of a vector database shows the reason when the test itself fails, instead of the generic error |
+| `48_ticket_delimiters.mdl` | Prompt-injection hardening: every ticket sent to the chat model is wrapped in `<ticket number="N">` tags so ticket text is separated from the instructions and the question |
+| `34_rerank.mdl`, `36_rerank_pick.mdl` | Reranking: model family Rerank, Config settings, Java action `JA_RerankChunks`, the new `ACT_Ask`, the Models and Ask tickets UI. `36` fixes the selection of the default reranker |
+| `bson-fix-query-input-type.js` | The question is embedded with Cohere input type `search_query` (MDL cannot recreate `ACT_Pagehelper_Send_SearchItem`). Run it with Studio Pro closed, then `mxcli fix hashes --repair` |
+| `35_documentation.mdl` | The Documentation page, the Documentation button on the demo page and the menu item |
 
 Things worth knowing:
 

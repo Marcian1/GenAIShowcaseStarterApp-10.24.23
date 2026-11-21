@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * State of the Ask tickets tab: the question, tickets to use, match strictness and the instructions for the model. Owns the answers. Not stored.
+ */
 public class AskSession implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject askSessionMendixObject;

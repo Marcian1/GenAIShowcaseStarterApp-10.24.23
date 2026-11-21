@@ -1,0 +1,22 @@
+mdl 1;
+
+-- Deleting a model (for example the reranker) left the Ask tickets badges and the setup status showing the deleted model until the page was reloaded.
+-- The status is now recomputed after the delete.
+/** Deletes a model unless it is the chat or embedding model in use. Refreshes the setup status afterwards. */
+create or modify microflow AWSBedrockImplementation.ACT_BedrockModel_Delete (
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'BedrockModel'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  retrieve $EmbeddingModel from $Config/AWSBedrockImplementation.Config_EmbeddingModel;
+  if $ChatModel = $BedrockModel or $EmbeddingModel = $BedrockModel then
+    show message '{1} is in use as the chat or embedding model. Pick another model first.' type Error with ({1} = $BedrockModel/Name) blocking;
+    return;
+  end if;
+  delete $BedrockModel refresh;
+  call microflow AWSBedrockImplementation.SUB_Config_RefreshStatus(Config = $Config);
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_BedrockModel_Delete to AWSBedrockImplementation.Admin;

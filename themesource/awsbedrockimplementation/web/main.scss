@@ -530,3 +530,58 @@ textarea.bedrock-mono,
     overflow: hidden;
   }
 }
+
+// Documentation page
+.bedrock-doc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bedrock-doc-button {
+  margin-top: 8px;
+}
+
+.bedrock-doc {
+  max-width: 900px;
+
+  .bedrock-doc-heading {
+    margin: 24px 0 8px;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .bedrock-doc-p {
+    margin: 0 0 12px;
+    line-height: 1.6;
+  }
+
+  .bedrock-doc-list {
+    margin: 0 0 12px;
+  }
+
+  .bedrock-doc-item {
+    display: block;
+    padding: 4px 0 4px 4px;
+    line-height: 1.55;
+  }
+
+  .bedrock-doc-note {
+    margin: 16px 0 0;
+  }
+}
+
+// The Documentation button sits in the top right corner of the demo page header.
+.bedrock-page-header {
+  position: relative;
+
+  .bedrock-doc-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin-top: 0;
+  }
+}

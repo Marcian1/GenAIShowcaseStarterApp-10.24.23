@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * One numbered source (ticket) of an answer with its title, snippet and score.
+ */
 public class AskSource implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject askSourceMendixObject;

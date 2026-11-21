@@ -1,0 +1,15 @@
+mdl 1;
+
+-- A reranking model cannot be tried in the pop-up (it has no prompt or embedding), but it was listed in the Model picker.
+-- Choosing it showed an empty "1024 dimensions" result. The picker now lists chat and embedding models only.
+alter page AWSBedrockImplementation.BedrockModel_Try {
+  replace cmbTryModel with {
+    combobox cmbTryModel (
+      Label: 'Model',
+      Attribute: TrySession_BedrockModel,
+      DataSource: database from AWSBedrockImplementation.BedrockModel where [Family != 'Rerank'] sort by Name asc,
+      CaptionAttribute: Name,
+      OnChange: call microflow AWSBedrockImplementation.ACT_TrySession_ModelChanged
+    )
+  };
+};

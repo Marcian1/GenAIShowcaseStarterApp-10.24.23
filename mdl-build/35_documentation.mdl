@@ -1,0 +1,219 @@
+mdl 1;
+
+-- Documentation page of the module, a Documentation button on the demo page and a menu item.
+-- Generated from the tab content; the text lives in the page itself.
+create or modify page AWSBedrockImplementation.Documentation folder 'USEME' (
+  Title: 'AWS Bedrock Implementation documentation',
+  Layout: AWSBedrockImplementation.Layout_TopBar,
+  Url: 'aws-bedrock-documentation'
+) {
+  container docPage (Class: 'aws-bedrock-page') {
+    container docHeader (Class: 'bedrock-page-header bedrock-doc-header') {
+      container docHeaderText {
+        dynamictext docTitle (Content: 'Documentation', RenderMode: H2)
+        dynamictext docSubtitle (Content: 'How the AWS Bedrock module works: setup, search and reranking, models, reference and troubleshooting.', Class: 'bedrock-card-subtitle')
+      }
+      actionbutton btnDocBack (Caption: 'Back to the demo', Action: show page AWSBedrockImplementation.Overview, ButtonStyle: Primary)
+    }
+    layoutgrid lgDoc {
+      row {
+        column (DesktopWidth: AutoFill) {
+          tabcontainer tabsDoc (DesignProperties: ('Style': 'Lined')) {
+            tabpage docTab1 (Caption: 'Overview') {
+              container docCard2 (Class: 'bedrock-card bedrock-doc') {
+                container docBody3 (Class: 'bedrock-card-body') {
+                  dynamictext dh4 (Content: 'What this module does', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp5 (Content: 'AWSBedrockImplementation connects a Mendix app to Amazon Bedrock and a PostgreSQL vector database (pgvector). The demo uses it to answer questions about support tickets: it finds the tickets that match a question and lets a chat model write an answer based on them. The answer always shows which tickets it used, and exactly what was sent to the model.', Class: 'bedrock-doc-p')
+                  dynamictext dh6 (Content: 'The idea in four steps', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul7 (Class: 'bedrock-doc-list') {
+                    dynamictext dli8 (Content: '1. Embed: every ticket is turned into a vector (a list of numbers that captures its meaning) by an embedding model, and stored in pgvector.', Class: 'bedrock-doc-item')
+                    dynamictext dli9 (Content: '2. Search: the question is embedded too, and the closest tickets are fetched from pgvector.', Class: 'bedrock-doc-item')
+                    dynamictext dli10 (Content: '3. Rerank: a reranking model reads the question together with each candidate ticket and keeps only the best few.', Class: 'bedrock-doc-item')
+                    dynamictext dli11 (Content: '4. Answer: a chat model (Claude or GPT) writes the answer using only those tickets as context.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh12 (Content: 'The five tabs of the demo page', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul13 (Class: 'bedrock-doc-list') {
+                    dynamictext dli14 (Content: 'Connections: AWS region, guardrail, a connection test, and the vector databases.', Class: 'bedrock-doc-item')
+                    dynamictext dli15 (Content: 'Models: the Bedrock models you can use, and which one is used for chat, embeddings and reranking.', Class: 'bedrock-doc-item')
+                    dynamictext dli16 (Content: 'Tickets: the ticket data, the sample set, and the button that builds the knowledge base.', Class: 'bedrock-doc-item')
+                    dynamictext dli17 (Content: 'Search and ask: a step by step view. First find similar tickets, then send them to the chat model.', Class: 'bedrock-doc-item')
+                    dynamictext dli18 (Content: 'Ask tickets: the everyday screen. Ask a question, read the answer, check the sources.', Class: 'bedrock-doc-item')
+                  }
+                  container dn19 (Class: 'bedrock-note bedrock-doc-note') {
+                    dynamictext dnt20 (Content: 'New here? Open the Getting started tab of this documentation and follow the seven steps. The Setup status card at the top of the demo page shows the same seven steps and turns green when they are done.')
+                  }
+                }
+              }
+            }
+            tabpage docTab21 (Caption: 'Getting started') {
+              container docCard22 (Class: 'bedrock-card bedrock-doc') {
+                container docBody23 (Class: 'bedrock-card-body') {
+                  dynamictext dh24 (Content: 'Set up in seven steps', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp25 (Content: 'These are the seven items of the Setup status card. Each one has to be green before Ask tickets works.', Class: 'bedrock-doc-p')
+                  container dul26 (Class: 'bedrock-doc-list') {
+                    dynamictext dli27 (Content: '1. AWS connection (Connections tab): enter the Bedrock region, optionally a guardrail, and click Test connection. Credentials are not entered in the app. They come from the platform (a web identity token and role, for example on EKS) or from the local emulator.', Class: 'bedrock-doc-item')
+                    dynamictext dli28 (Content: '2. Encryption key: the constant Encryption.EncryptionKey must be set. It protects the stored database password.', Class: 'bedrock-doc-item')
+                    dynamictext dli29 (Content: '3. Vector database (Connections tab): add a PostgreSQL database with the pgvector extension, click Test, and choose it as the database used for tickets.', Class: 'bedrock-doc-item')
+                    dynamictext dli30 (Content: '4. Chat model (Models tab): choose a Claude or GPT model.', Class: 'bedrock-doc-item')
+                    dynamictext dli31 (Content: '5. Embedding model (Models tab): choose a Cohere Embed model. The knowledge base stores 1024 dimensions.', Class: 'bedrock-doc-item')
+                    dynamictext dli32 (Content: '6. Tickets (Tickets tab): add tickets, or click Load sample tickets.', Class: 'bedrock-doc-item')
+                    dynamictext dli33 (Content: '7. Knowledge base (Tickets tab): click Create chunks and store in knowledge base. This embeds every ticket and writes it to pgvector.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh34 (Content: 'Optional: turn on reranking', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp35 (Content: 'On the Models tab, pick a Reranking model. A Cohere Rerank 3.5 model is added for you the first time the app starts and is selected by default. Clear the picker to switch reranking off. See the How search works tab for what it changes.', Class: 'bedrock-doc-p')
+                  dynamictext dh36 (Content: 'After you change something', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul37 (Class: 'bedrock-doc-list') {
+                    dynamictext dli38 (Content: 'You edited, added or deleted tickets: rebuild the chunks (the Tickets tab shows how many tickets changed).', Class: 'bedrock-doc-item')
+                    dynamictext dli39 (Content: 'You switched the embedding model: rebuild the chunks. Vectors from different models cannot be compared.', Class: 'bedrock-doc-item')
+                    dynamictext dli40 (Content: 'You switched the chat or reranking model: nothing to rebuild.', Class: 'bedrock-doc-item')
+                  }
+                }
+              }
+            }
+            tabpage docTab41 (Caption: 'How search works') {
+              container docCard42 (Class: 'bedrock-card bedrock-doc') {
+                container docBody43 (Class: 'bedrock-card-body') {
+                  dynamictext dh44 (Content: 'Indexing (Create chunks)', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul45 (Class: 'bedrock-doc-list') {
+                    dynamictext dli46 (Content: 'Each ticket becomes one chunk of text: Subject, Description and, when present, Reproduction steps.', Class: 'bedrock-doc-item')
+                    dynamictext dli47 (Content: 'The chunks are sent to the embedding model in one request with the Cohere input type search_document. This tells the model that the text is something to be found.', Class: 'bedrock-doc-item')
+                    dynamictext dli48 (Content: 'The vectors and the text are stored in the pgvector table of the selected database. The Config remembers which model built them.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh49 (Content: 'Asking (Ask tickets)', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul50 (Class: 'bedrock-doc-list') {
+                    dynamictext dli51 (Content: '1. The question is embedded with the Cohere input type search_query. Questions and documents look different, and the model builds a better vector when it knows which one it gets. (Older versions used search_document for both, which lowered the quality of the match.)', Class: 'bedrock-doc-item')
+                    dynamictext dli52 (Content: '2. pgvector returns the nearest tickets. With reranking on it returns 30 candidates (the setting Candidates to rerank). With reranking off it returns Tickets to use, filtered by the Match strictness slider.', Class: 'bedrock-doc-item')
+                    dynamictext dli53 (Content: '3. Reranking: the Cohere Rerank model on Bedrock reads the question together with each candidate and gives each pair a relevance score. The best Tickets to use (default 5) are kept.', Class: 'bedrock-doc-item')
+                    dynamictext dli54 (Content: '4. The kept tickets are numbered and sent to the chat model with your instructions. The answer cites them by number.', Class: 'bedrock-doc-item')
+                    dynamictext dli55 (Content: '5. The answer card shows the sources with their score, the time taken, a note about the reranking, and the exact text that was sent to the model.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh56 (Content: 'Why reranking replaces the strictness slider', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp57 (Content: 'A similarity score is only meaningful for one question. 0.45 can be an excellent match for one question and a weak one for another, so a fixed cut-off either drops useful tickets or lets noise through. A reranker looks at the question and the ticket together, so it ranks the candidates far better, and the app simply keeps the top few. With reranking on, the Match strictness slider is hidden. With reranking off, the old behaviour is unchanged.', Class: 'bedrock-doc-p')
+                  container dn58 (Class: 'bedrock-note bedrock-doc-note') {
+                    dynamictext dnt59 (Content: 'If the reranker cannot be reached (no model access, wrong region, network), the app does not fail. It uses the vector order instead and says so on the answer card. The scores shown next to a source are the reranker relevance score when reranking worked, and the cosine similarity otherwise.')
+                  }
+                  dynamictext dh60 (Content: 'What is not included yet', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp61 (Content: 'Search is semantic only. Exact terms such as product codes, abbreviations or decision numbers can be missed. The planned next step is hybrid search: PostgreSQL full-text search next to the vector search, with the results merged before reranking.', Class: 'bedrock-doc-p')
+                }
+              }
+            }
+            tabpage docTab62 (Caption: 'Models') {
+              container docCard63 (Class: 'bedrock-card bedrock-doc') {
+                container docBody64 (Class: 'bedrock-card-body') {
+                  dynamictext dh65 (Content: 'Model families', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp66 (Content: 'The family of a model decides how its request is built. The Models tab lists them, and Add model creates new ones.', Class: 'bedrock-doc-p')
+                  container dul67 (Class: 'bedrock-doc-list') {
+                    dynamictext dli68 (Content: 'Claude (chat): Anthropic messages format, with max tokens and effort.', Class: 'bedrock-doc-item')
+                    dynamictext dli69 (Content: 'GPT (chat): OpenAI gpt-oss models on Bedrock, in the chat-completions format, with max tokens and reasoning effort.', Class: 'bedrock-doc-item')
+                    dynamictext dli70 (Content: 'Cohere (embeddings): Cohere Embed. The input type (search_document or search_query) is set by the flows that index and search. The knowledge base needs 1024 dimensions.', Class: 'bedrock-doc-item')
+                    dynamictext dli71 (Content: 'Titan (embeddings): Amazon Titan Text Embeddings V2. Can be tried, but the ticket flows use Cohere.', Class: 'bedrock-doc-item')
+                    dynamictext dli72 (Content: 'Rerank (reranking): Cohere Rerank. It has no settings. It is called with InvokeModel with the query, the candidate texts and top_n.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh73 (Content: 'Default models', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul74 (Class: 'bedrock-doc-list') {
+                    dynamictext dli75 (Content: 'Claude Sonnet 5 (eu.anthropic.claude-sonnet-5)', Class: 'bedrock-doc-item')
+                    dynamictext dli75h (Content: 'Claude Haiku 5.5 (eu.anthropic.claude-haiku-5-5), optional: a faster, cheaper Claude. Pick it as the chat model on the Models tab.', Class: 'bedrock-doc-item')
+                    dynamictext dli76 (Content: 'GPT OSS 120B (openai.gpt-oss-120b-1:0)', Class: 'bedrock-doc-item')
+                    dynamictext dli77 (Content: 'Cohere Embed v4 (eu.cohere.embed-v4:0)', Class: 'bedrock-doc-item')
+                    dynamictext dli78 (Content: 'Titan Text Embeddings V2 (amazon.titan-embed-text-v2:0)', Class: 'bedrock-doc-item')
+                    dynamictext dli79 (Content: 'Cohere Rerank 3.5 (cohere.rerank-v3-5:0)', Class: 'bedrock-doc-item')
+                  }
+                  container dn80 (Class: 'bedrock-note bedrock-doc-note') {
+                    dynamictext dnt81 (Content: 'A model only works when it is enabled for your AWS account (Bedrock console, Model access) and offered in your region. Use List models in AWS on the Models tab to see what your region offers. Chat and embedding models can be tried with the Try button. A reranker is used by the Ask tickets tab and has no Try pop-up.')
+                  }
+                }
+              }
+            }
+            tabpage docTab82 (Caption: 'Reference') {
+              container docCard83 (Class: 'bedrock-card bedrock-doc') {
+                container docBody84 (Class: 'bedrock-card-body') {
+                  dynamictext dh85 (Content: 'Main entities', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul86 (Class: 'bedrock-doc-list') {
+                    dynamictext dli87 (Content: 'Config: the one settings object. Region, guardrail, test results, the selected chat, embedding and reranking models, the database, candidate count, and the status flags and counts shown on the page.', Class: 'bedrock-doc-item')
+                    dynamictext dli88 (Content: 'BedrockModel: a model with its Bedrock id, family and defaults.', Class: 'bedrock-doc-item')
+                    dynamictext dli89 (Content: 'Ticket: the demo data (subject, description, reproduction steps, resolution, status, category).', Class: 'bedrock-doc-item')
+                    dynamictext dli90 (Content: 'TicketChunk: a chunk in the knowledge base. It extends GenAICommons.KnowledgeBaseChunk and carries the text, the vector and the similarity.', Class: 'bedrock-doc-item')
+                    dynamictext dli91 (Content: 'PageHelper: carries one search from the question to the prompt.', Class: 'bedrock-doc-item')
+                    dynamictext dli92 (Content: 'AskSession, AskEntry, AskSource: the questions, answers and numbered sources on the Ask tickets tab, including the rerank note.', Class: 'bedrock-doc-item')
+                    dynamictext dli93 (Content: 'TrySession: one try-out of a model.', Class: 'bedrock-doc-item')
+                    dynamictext dli94 (Content: 'Request and response entities (CohereRequest, AnthropicRequest, GptRequest, and so on): the JSON of each Bedrock call, with export and import mappings.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh95 (Content: 'Main logic', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul96 (Class: 'bedrock-doc-list') {
+                    dynamictext dli97 (Content: 'ACT_Ask: the Ask tickets button. Searches, reranks, builds the context, calls the chat model and fills the answer.', Class: 'bedrock-doc-item')
+                    dynamictext dli98 (Content: 'ACT_Pagehelper_Send_SearchItem: embeds the question (search_query) and fetches the nearest chunks from pgvector.', Class: 'bedrock-doc-item')
+                    dynamictext dli99 (Content: 'JA_RerankChunks: sorts the candidates, calls the reranker through Bedrock InvokeModel and returns the best ones. It falls back to the vector order on any error and never logs the question or ticket text.', Class: 'bedrock-doc-item')
+                    dynamictext dli100 (Content: 'ACT_Chunks_Rebuild and SUB_BatchTicketList_CreateChunks_InsertInVectorDB: build the knowledge base.', Class: 'bedrock-doc-item')
+                    dynamictext dli101 (Content: 'SUB_Config_RefreshStatus: recalculates the Setup status. Call it after anything that changes the setup.', Class: 'bedrock-doc-item')
+                    dynamictext dli102 (Content: 'JA_BedrockInvokeModel and JA_BedrockInvokeModel_Embeddings: the generic Bedrock calls. They share one client per region (class BedrockSupport).', Class: 'bedrock-doc-item')
+                    dynamictext dli103 (Content: 'JA_ListFoundationModels and JA_BedrockTestConnection: the List models and Test connection buttons.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh104 (Content: 'Security', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul105 (Class: 'bedrock-doc-list') {
+                    dynamictext dli106 (Content: 'The module role Admin can use the demo page and all flows. User can open the page.', Class: 'bedrock-doc-item')
+                    dynamictext dli107 (Content: 'AWS credentials are never stored in the app.', Class: 'bedrock-doc-item')
+                    dynamictext dli108 (Content: 'The database password is stored encrypted with Encryption.EncryptionKey.', Class: 'bedrock-doc-item')
+                    dynamictext dli109 (Content: 'Ticket text is not written to the logs, and error pop-ups do not show stack traces. Details are available at Debug level.', Class: 'bedrock-doc-item')
+                    dynamictext dli110 (Content: 'A Bedrock guardrail can be set on the Connections tab. It is applied to chat and embedding calls, not to the reranker.', Class: 'bedrock-doc-item')
+                  }
+                }
+              }
+            }
+            tabpage docTab111 (Caption: 'Local emulator') {
+              container docCard112 (Class: 'bedrock-card bedrock-doc') {
+                container docBody113 (Class: 'bedrock-card-body') {
+                  dynamictext dh114 (Content: 'Try it without AWS', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  dynamictext dp115 (Content: 'The folder bedrock-local-emulator contains a small local mock of the AWS endpoints (STS and Bedrock). The Java actions are unchanged: the AWS SDK is simply pointed at the mock.', Class: 'bedrock-doc-p')
+                  container dul116 (Class: 'bedrock-doc-list') {
+                    dynamictext dli117 (Content: '1. Start the mock: bedrock-local-emulator/start-mock.ps1.', Class: 'bedrock-doc-item')
+                    dynamictext dli118 (Content: '2. Run the app locally. The Default configuration already contains the AWS SDK settings for the mock.', Class: 'bedrock-doc-item')
+                    dynamictext dli119 (Content: '3. Use a Postgres database with pgvector (database bedrock_vectordb) as the vector database.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dp120 (Content: 'The mock serves Claude chat, GPT chat, Cohere Embed, Titan embeddings, Cohere Rerank and ListFoundationModels. Without Ollama it returns deterministic fake data (embeddings are hashed bags of words, replies echo the prompt, reranking scores word overlap). With Ollama running on localhost:11434 it gives real embeddings and chat replies. See bedrock-local-emulator/README.md.', Class: 'bedrock-doc-p')
+                  container dn121 (Class: 'bedrock-note bedrock-doc-note') {
+                    dynamictext dnt122 (Content: 'After switching between the fake and the Ollama backend, rebuild the chunks, so the stored vectors match the model that embeds the questions. Remove the emulator JVM settings before deploying.')
+                  }
+                }
+              }
+            }
+            tabpage docTab123 (Caption: 'Troubleshooting') {
+              container docCard124 (Class: 'bedrock-card bedrock-doc') {
+                container docBody125 (Class: 'bedrock-card-body') {
+                  dynamictext dh126 (Content: 'Common problems', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul127 (Class: 'bedrock-doc-list') {
+                    dynamictext dli128 (Content: 'Test connection fails: the platform has no credentials. Check the web identity token, the role and the region, or start the local emulator.', Class: 'bedrock-doc-item')
+                    dynamictext dli129 (Content: 'The knowledge base is empty: click Create chunks on the Tickets tab. Check that a database is selected and tested.', Class: 'bedrock-doc-item')
+                    dynamictext dli130 (Content: 'The answers are poor after a change: look for the yellow notes on the Tickets and Ask tickets tabs. Rebuild after a change of embedding model or tickets.', Class: 'bedrock-doc-item')
+                    dynamictext dli131 (Content: 'No tickets matched (reranking off): lower the Match strictness, or click Loosen the match.', Class: 'bedrock-doc-item')
+                    dynamictext dli132 (Content: 'The answer card says reranking failed: the reranking model is not enabled for your account or region, or the model id is wrong. The answer still works, using the vector order. Fix it on the Models tab, or clear the reranking picker.', Class: 'bedrock-doc-item')
+                    dynamictext dli133 (Content: 'Model errors mention access: enable the model in the Bedrock console and check that the id is the one for your region (for example the eu. prefix of inference profiles).', Class: 'bedrock-doc-item')
+                    dynamictext dli134 (Content: 'Slow answers: each question makes up to three Bedrock calls (embedding, reranking, chat). Chat is the slowest. Reduce the max tokens of the chat model.', Class: 'bedrock-doc-item')
+                  }
+                  dynamictext dh135 (Content: 'Planned', RenderMode: H4, Class: 'bedrock-doc-heading')
+                  container dul136 (Class: 'bedrock-doc-list') {
+                    dynamictext dli137 (Content: 'Hybrid search: PostgreSQL full-text search combined with the vector search, to catch exact terms.', Class: 'bedrock-doc-item')
+                    dynamictext dli138 (Content: 'An optional minimum relevance score on the reranked results.', Class: 'bedrock-doc-item')
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+grant view on page AWSBedrockImplementation.Documentation to AWSBedrockImplementation.Admin, AWSBedrockImplementation.User;
+
+alter snippet AWSBedrockImplementation.SNIP_Overview {
+  insert after pageSubtitle {
+    actionbutton btnDocumentation (Caption: 'Documentation', Action: show page AWSBedrockImplementation.Documentation, ButtonStyle: Default, Class: 'bedrock-doc-button')
+  };
+};
+
+alter navigation Responsive {
+  insert into 'Amazon Bedrock-Specific' {
+    menu item 'AWS Bedrock Documentation' (OnClick: show page AWSBedrockImplementation.Documentation)
+  }
+};

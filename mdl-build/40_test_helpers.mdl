@@ -1,0 +1,59 @@
+mdl 1;
+-- Helper microflows for tests/mdl/*.test.mdl. They live in their own module so the exported AWSBedrockImplementation stays clean.
+create module BedrockTests;
+
+create or modify microflow BedrockTests.GptRequestJson ($Content: String, $Effort: String, $Max: Integer) returns String
+begin
+  $R = create AWSBedrockImplementation.GptRequest (Max_tokens = $Max, Reasoning_effort = $Effort);
+  $M = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $R, Role = 'user', Content = $Content);
+  $Json = export to mapping AWSBedrockImplementation.EXM_GptRequest($R);
+  return $Json;
+end;
+
+create or modify microflow BedrockTests.GptResponseSummary ($Json: String) returns String
+begin
+  $Resp = import from mapping AWSBedrockImplementation.IMM_GptResponse($Json);
+  retrieve $ChoiceList from $Resp/AWSBedrockImplementation.GptChoice_GptResponse;
+  $Choice = head $ChoiceList;
+  retrieve $MsgList from $Choice/AWSBedrockImplementation.GptChoiceMessage_GptChoice;
+  $Msg = head $MsgList;
+  retrieve $UsageList from $Resp/AWSBedrockImplementation.GptUsage_GptResponse;
+  $Usage = head $UsageList;
+  declare $Summary String = $Msg/Content + '|' + toString($Usage/Prompt_tokens) + '|' + toString($Usage/Completion_tokens);
+  return $Summary;
+end;
+
+create or modify microflow BedrockTests.IsChatFor ($Family: AWSBedrockImplementation.ENUM_ModelFamily) returns Boolean
+begin
+  $Model = create AWSBedrockImplementation.BedrockModel (Name = 'T', ModelId = 'T', Family = $Family);
+  $Try = create AWSBedrockImplementation.TrySession ();
+  change $Try (AWSBedrockImplementation.TrySession_BedrockModel = $Model);
+  call microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults(TrySession = $Try);
+  declare $IsChat Boolean = $Try/IsChat;
+  return $IsChat;
+end;
+
+create or modify microflow BedrockTests.SeedAndCountGpt () returns Integer
+begin
+  call microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults();
+  retrieve $L from AWSBedrockImplementation.BedrockModel where ModelId = 'openai.gpt-oss-120b-1:0';
+  $N = count $L;
+  return $N;
+end;
+
+create or modify microflow BedrockTests.SeedAndCountHaiku () returns Integer
+begin
+  call microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults();
+  call microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults();
+  retrieve $L from AWSBedrockImplementation.BedrockModel where ModelId = 'eu.anthropic.claude-haiku-5-5';
+  $N = count $L;
+  return $N;
+end;
+
+create or modify microflow BedrockTests.ApplyDefaultsWithoutModel () returns Boolean
+begin
+  $Try = create AWSBedrockImplementation.TrySession ();
+  call microflow AWSBedrockImplementation.SUB_TrySession_ApplyModelDefaults(TrySession = $Try);
+  declare $HasResult Boolean = $Try/HasResult;
+  return not($HasResult);
+end;

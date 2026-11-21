@@ -1,0 +1,72 @@
+mdl 1;
+
+drop microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send;
+drop microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults;
+
+-- The ticket Q&A uses the chat model chosen on the Config. A GPT model now takes its own request/response path.
+create or modify microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send (
+  $PageHelper: AWSBedrockImplementation.PageHelper
+)
+folder 'Ticket'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $ChatModel != empty and $ChatModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then
+    call microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt(PageHelper = $PageHelper, Config = $Config, BedrockModel = $ChatModel);
+    return;
+  end if;
+  $NewAnthropicRequest = create AWSBedrockImplementation.AnthropicRequest (Anthropic_version = 'bedrock-2023-05-31', Max_tokens = $ChatModel/MaxTokens, System = 'system message');
+  $NewThinking = create AWSBedrockImplementation.Thinking (_type = 'adaptive', Thinking_AnthropicRequest = $NewAnthropicRequest);
+  $NewOutput_config = create AWSBedrockImplementation.Output_config (Effort = getKey($ChatModel/Effort), Output_config_AnthropicRequest = $NewAnthropicRequest);
+  $NewMessages = create AWSBedrockImplementation.Messages (Messages_AnthropicRequest = $NewAnthropicRequest);
+  $NewMessage = create AWSBedrockImplementation.Message (Message_Messages = $NewMessages, Role = 'user', Content = $PageHelper/SystemPrompt + 
+'
+' 
++ $PageHelper/TicketData + 
+'
+'
++ $PageHelper/UserPrompt);
+  $Request = export to mapping AWSBedrockImplementation.EXM_AnthropicRequest($NewAnthropicRequest) on error without rollback begin
+    show message 'Export mapping error!
+
+LatestMessage:
+{1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $ChatModel/ModelId, Config = $Config) on error without rollback begin
+    show message 'Invoke model error!
+
+LatestMessage:
+{1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  $AnthropicResponse = import from mapping AWSBedrockImplementation.IMM_AnthropicResponse($Response) on error without rollback begin
+    show message 'Import mapping error!
+
+LatestMessage:
+{1}' type Error with ({1} = $latestError/Message) blocking;
+    return;
+  end error;
+  retrieve $Content from $AnthropicResponse/AWSBedrockImplementation.Content_AnthropicResponse;
+  retrieve $ContentItem from $Content/AWSBedrockImplementation.ContentItem_Content;
+  $ContentItem_Head = head $ContentItem;
+  change $PageHelper (PromptResponse = $ContentItem_Head/Text) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send to AWSBedrockImplementation.Admin;
+
+/** Creates the default models (Claude, GPT, Cohere, Titan) the first time the app is opened. */
+create or modify microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults ()
+folder 'BedrockModel'
+begin
+  retrieve $ModelList from AWSBedrockImplementation.BedrockModel;
+  $ModelCount = count $ModelList;
+  if $ModelCount = 0 then
+    $Claude = create AWSBedrockImplementation.BedrockModel (Name = 'Claude Sonnet 5', ModelId = 'eu.anthropic.claude-sonnet-5', Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.high) commit;
+    $Gpt = create AWSBedrockImplementation.BedrockModel (Name = 'GPT OSS 120B', ModelId = 'openai.gpt-oss-120b-1:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.medium) commit;
+    $Cohere = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Embed v4', ModelId = 'eu.cohere.embed-v4:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere, Dimension = 1024, InputType = AWSBedrockImplementation.ENUM_CohereInputType.search_document, Truncate = AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT) commit;
+    $Titan = create AWSBedrockImplementation.BedrockModel (Name = 'Titan Text Embeddings V2', ModelId = 'amazon.titan-embed-text-v2:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan, Dimension = 1024, Normalize = true) commit;
+  end if;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults to AWSBedrockImplementation.Admin;

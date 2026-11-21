@@ -1,0 +1,36 @@
+mdl 1;
+
+-- Prompt-injection hardening: every ticket sent to the chat model is wrapped in <ticket> tags, so ticket text
+-- is clearly separated from the instructions and the question.
+create or modify microflow AWSBedrockImplementation.SUB_AskEntry_AddSource (
+  $AskEntry: AWSBedrockImplementation.AskEntry,
+  $TicketChunk: AWSBedrockImplementation.TicketChunk,
+  $Number: Integer
+)
+returns String as $ContextText
+folder 'Ask'
+begin
+  declare $TicketNumber Integer = parseInteger(substring($TicketChunk/HumanReadableID, 7));
+  retrieve $Ticket from AWSBedrockImplementation.Ticket
+    where TicketId = $TicketNumber
+    first;
+  declare $Title String = $TicketChunk/HumanReadableID;
+  declare $Snippet String = $TicketChunk/InputText;
+  declare $TicketRef String = $TicketChunk/HumanReadableID;
+  declare $Context String = '<ticket number="' + toString($Number) + '">' + $TicketChunk/InputText + '</ticket>';
+  if $Ticket != empty then
+    set $Title = $Ticket/Subject;
+    set $Snippet = if length($Ticket/Description) > 300 then substring($Ticket/Description, 0, 297) + '...' else $Ticket/Description;
+    set $TicketRef = 'Ticket ' + toString($Ticket/TicketId) + (if $Ticket/Status != empty then ' · ' + getCaption($Ticket/Status) else '');
+    set $Context = '<ticket number="' + toString($Number) + '">
+Ticket ' + toString($Ticket/TicketId) + ': ' + $Ticket/Subject + '
+Description: ' + $Ticket/Description + (if $Ticket/Resolution != empty and trim($Ticket/Resolution) != '' then '
+Resolution: ' + $Ticket/Resolution else '') + '
+</ticket>';
+  end if;
+  $AskSource = create AWSBedrockImplementation.AskSource (Number = $Number, Title = $Title, Snippet = $Snippet, TicketRef = $TicketRef, Similarity = $TicketChunk/Similarity, SimilarityPercent = $TicketChunk/Similarity * 100);
+  add $AskSource to $AskEntry/AWSBedrockImplementation.AskEntry_AskSource;
+  return $Context;
+end;
+
+grant execute on microflow AWSBedrockImplementation.SUB_AskEntry_AddSource to AWSBedrockImplementation.Admin;

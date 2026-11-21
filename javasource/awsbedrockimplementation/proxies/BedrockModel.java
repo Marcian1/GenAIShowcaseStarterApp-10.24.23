@@ -4,6 +4,9 @@
 
 package awsbedrockimplementation.proxies;
 
+/**
+ * A Bedrock model that can be used by the demo: display name, model id (or inference profile), family and the defaults of that family.
+ */
 public class BedrockModel implements com.mendix.systemwideinterfaces.core.IEntityProxy
 {
 	private final com.mendix.systemwideinterfaces.core.IMendixObject bedrockModelMendixObject;

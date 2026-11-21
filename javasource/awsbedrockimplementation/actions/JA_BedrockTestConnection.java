@@ -32,7 +32,7 @@ public class JA_BedrockTestConnection extends UserAction<java.lang.String>
 
 		StringBuilder sb = new StringBuilder();
 				String region = RegionName == null ? "" : RegionName.trim();
-				if (!region.matches("^[a-z]{2}(-[a-z]+)+-[0-9]$")) {
+				if (!awsbedrockimplementation.impl.BedrockSupport.isValidRegion(region)) {
 					return "FAIL: The region \"" + region + "\" is not a valid AWS region.";
 				}
 				sb.append("OK: Region ").append(region).append(" is valid\n");
