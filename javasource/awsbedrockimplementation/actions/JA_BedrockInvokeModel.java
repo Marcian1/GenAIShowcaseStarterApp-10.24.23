@@ -150,16 +150,19 @@ public class JA_BedrockInvokeModel extends UserAction<java.lang.String>
 		 * with an identifier; a version below 1 means the working draft.
 		 */
 		public static String invoke(String region, String modelId, String body, String guardrailId, Integer guardrailVersion) {
-			InvokeModelRequest.Builder request = InvokeModelRequest.builder()
-					.modelId(modelId)
-					.body(SdkBytes.fromUtf8String(body));
-			if (guardrailId != null && !guardrailId.isBlank()) {
+			boolean guarded = guardrailId != null && !guardrailId.isBlank();
+			InvokeModelRequest.Builder request = InvokeModelRequest.builder().modelId(modelId);
+			String requestBody = body;
+			if (guarded) {
 				request.guardrailIdentifier(guardrailId.trim());
 				request.guardrailVersion(guardrailVersion != null && guardrailVersion > 0 ? guardrailVersion.toString() : "DRAFT");
+				requestBody = withGuardrailTagSuffix(body);
 			}
+			request.body(SdkBytes.fromUtf8String(requestBody));
 			LOG.debug("InvokeModel model=" + modelId + " region=" + region + " requestChars=" + (body == null ? 0 : body.length()));
+			String response;
 			try {
-				return runtimeClient(region).invokeModel(request.build()).body().asUtf8String();
+				response = runtimeClient(region).invokeModel(request.build()).body().asUtf8String();
 			} catch (AwsServiceException e) {
 				String code = e.awsErrorDetails() == null ? "unknown" : e.awsErrorDetails().errorCode();
 				String msg = e.awsErrorDetails() == null ? e.getMessage() : e.awsErrorDetails().errorMessage();
@@ -174,6 +177,54 @@ public class JA_BedrockInvokeModel extends UserAction<java.lang.String>
 				LOG.debug("Bedrock InvokeModel failure detail", e);
 				throw new RuntimeException("Bedrock InvokeModel could not be completed for " + modelId + ": " + e.getMessage());
 			}
+			if (guarded && isBlockedByGuardrail(response)) {
+				String blocked = blockedText(response);
+				LOG.warn("Bedrock guardrail " + guardrailId.trim() + " blocked the request: model=" + modelId + ", region=" + region);
+				throw new RuntimeException("The Bedrock guardrail (" + guardrailId.trim() + ") blocked this request"
+						+ (blocked == null ? "." : ": " + blocked));
+			}
+			return response;
+		}
+
+		/** Marker of the text a guardrail must evaluate, written by the Ask flow when "Check only the question" is on. */
+		public static final String GUARD_TAG = "amazon-bedrock-guardrails-guardContent_";
+		public static final String GUARD_TAG_SUFFIX = "askq";
+
+		private static final Pattern GUARD_ACTION = Pattern.compile("\"amazon-bedrock-guardrailAction\"\\s*:\\s*\"INTERVENED\"");
+		private static final Pattern STOP_GUARD = Pattern.compile("\"(stop_reason|finish_reason)\"\\s*:\\s*\"guardrail_intervened\"");
+		private static final Pattern STOP_NORMAL = Pattern.compile(
+				"\"(stop_reason|finish_reason)\"\\s*:\\s*\"(end_turn|stop|max_tokens|length|stop_sequence|tool_use)\"");
+		private static final Pattern FIRST_TEXT = Pattern.compile("\"(?:text|content)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+
+		/**
+		 * When the request contains guardrail input tags, Bedrock needs the tag suffix in the body
+		 * ("amazon-bedrock-guardrailConfig"). Only then are just the tagged parts evaluated by the guardrail.
+		 */
+		static String withGuardrailTagSuffix(String body) {
+			if (body == null || !body.contains(GUARD_TAG + GUARD_TAG_SUFFIX)) return body;
+			String t = body.stripLeading();
+			if (!t.startsWith("{") || t.contains("amazon-bedrock-guardrailConfig")) return body;
+			String rest = t.substring(1).stripLeading();
+			return "{\"amazon-bedrock-guardrailConfig\":{\"tagSuffix\":\"" + GUARD_TAG_SUFFIX + "\"}"
+					+ (rest.startsWith("}") ? "" : ",") + rest;
+		}
+
+		/**
+		 * A guardrail that blocks the input (or output) makes InvokeModel answer HTTP 200 with the configured blocked message
+		 * as if it were the model's text. This tells the two apart: stop reason guardrail_intervened, or an INTERVENED action
+		 * without a normal stop reason (a masked answer still ends normally and is accepted).
+		 */
+		static boolean isBlockedByGuardrail(String response) {
+			if (response == null) return false;
+			if (STOP_GUARD.matcher(response).find()) return true;
+			return GUARD_ACTION.matcher(response).find() && !STOP_NORMAL.matcher(response).find();
+		}
+
+		static String blockedText(String response) {
+			java.util.regex.Matcher m = FIRST_TEXT.matcher(response);
+			if (!m.find()) return null;
+			String t = m.group(1).replace("\\n", " ").replace("\\\"", "\"").trim();
+			return t.isEmpty() ? null : (t.length() > 300 ? t.substring(0, 300) + "..." : t);
 		}
 	}
 	// END EXTRA CODE

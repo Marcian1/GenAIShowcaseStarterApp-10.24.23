@@ -1,0 +1,192 @@
+mdl 1;
+
+-- Summary step vs. Bedrock guardrails / security gateways.
+-- 1. The instructions go in the model's real system prompt (the Claude request used to send the literal text "system message"),
+--    the tickets and the question in the user message.
+-- 2. Optional "Check only the question" (Config.GuardrailTagQuestion): the question is wrapped in guardrail input tags
+--    so a guardrail (prompt-attack filter!) does not screen the instructions and the free-form ticket text.
+-- 3. A guardrail that blocks the request is reported as an error (Java: JA_BedrockInvokeModel) and shown on the answer card
+--    instead of being shown as if the model had written it.
+alter entity AWSBedrockImplementation.PageHelper add attribute ErrorMessage: String(unlimited);
+alter entity AWSBedrockImplementation.Config add attribute GuardrailTagQuestion: Boolean default false;
+
+/** The user message of the summary step: the tickets, then the question. With a guardrail and "Check only the question" the question is wrapped in guardrail input tags. */
+create or modify microflow AWSBedrockImplementation.SUB_PageHelper_UserContent (
+  $PageHelper: AWSBedrockImplementation.PageHelper,
+  $Config: AWSBedrockImplementation.Config
+)
+returns String as $Content
+folder 'Ticket'
+begin
+  declare $Tickets String = if $PageHelper/TicketData = empty then '' else $PageHelper/TicketData;
+  declare $Question String = if $PageHelper/UserPrompt = empty then '' else $PageHelper/UserPrompt;
+  declare $Tag Boolean = $Config/GuardrailTagQuestion and $Config/BedrockGuardrailIdentifier != empty and trim($Config/BedrockGuardrailIdentifier) != '';
+  if $Tag then
+    return $Tickets + '
+<amazon-bedrock-guardrails-guardContent_askq>' + $Question + '</amazon-bedrock-guardrails-guardContent_askq>';
+  end if;
+  return $Tickets + '
+' + $Question;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_PageHelper_UserContent to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send;
+create or modify microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send (
+  $PageHelper: AWSBedrockImplementation.PageHelper
+)
+folder 'Ticket'
+begin
+  change $PageHelper (PromptResponse = empty, ErrorMessage = empty);
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $ChatModel != empty and $ChatModel/Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI then
+    call microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt(PageHelper = $PageHelper, Config = $Config, BedrockModel = $ChatModel);
+    return;
+  end if;
+  declare $System String = if $PageHelper/SystemPrompt = empty or trim($PageHelper/SystemPrompt) = '' then 'You are a helpful assistant.' else $PageHelper/SystemPrompt;
+  $UserContent = call microflow AWSBedrockImplementation.SUB_PageHelper_UserContent(PageHelper = $PageHelper, Config = $Config);
+  $NewAnthropicRequest = create AWSBedrockImplementation.AnthropicRequest (Anthropic_version = 'bedrock-2023-05-31', Max_tokens = $ChatModel/MaxTokens, System = $System);
+  $NewThinking = create AWSBedrockImplementation.Thinking (_type = 'adaptive', Thinking_AnthropicRequest = $NewAnthropicRequest);
+  $NewOutput_config = create AWSBedrockImplementation.Output_config (Effort = getKey($ChatModel/Effort), Output_config_AnthropicRequest = $NewAnthropicRequest);
+  $NewMessages = create AWSBedrockImplementation.Messages (Messages_AnthropicRequest = $NewAnthropicRequest);
+  $NewMessage = create AWSBedrockImplementation.Message (Message_Messages = $NewMessages, Role = 'user', Content = $UserContent);
+  $Request = export to mapping AWSBedrockImplementation.EXM_AnthropicRequest($NewAnthropicRequest) on error without rollback begin
+    change $PageHelper (ErrorMessage = 'Export mapping error: ' + $latestError/Message) refresh;
+    return;
+  end error;
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $ChatModel/ModelId, Config = $Config) on error without rollback begin
+    change $PageHelper (ErrorMessage = $latestError/Message) refresh;
+    return;
+  end error;
+  $AnthropicResponse = import from mapping AWSBedrockImplementation.IMM_AnthropicResponse($Response) on error without rollback begin
+    change $PageHelper (ErrorMessage = 'Import mapping error: ' + $latestError/Message) refresh;
+    return;
+  end error;
+  retrieve $Content from $AnthropicResponse/AWSBedrockImplementation.Content_AnthropicResponse;
+  retrieve $ContentItem from $Content/AWSBedrockImplementation.ContentItem_Content;
+  $ContentItem_Head = head $ContentItem;
+  change $PageHelper (PromptResponse = $ContentItem_Head/Text) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send to AWSBedrockImplementation.Admin;
+
+/** Same as the Claude prompt for the ticket Q&A, but for a GPT chat model: instructions as the system message. Stores the answer, or the error message. */
+drop microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt;
+create or modify microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt (
+  $PageHelper: AWSBedrockImplementation.PageHelper,
+  $Config: AWSBedrockImplementation.Config,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'Ticket'
+begin
+  declare $System String = if $PageHelper/SystemPrompt = empty or trim($PageHelper/SystemPrompt) = '' then 'You are a helpful assistant.' else $PageHelper/SystemPrompt;
+  $UserContent = call microflow AWSBedrockImplementation.SUB_PageHelper_UserContent(PageHelper = $PageHelper, Config = $Config);
+  $GptRequest = create AWSBedrockImplementation.GptRequest (Max_tokens = $BedrockModel/MaxTokens, Reasoning_effort = getKey($BedrockModel/Effort));
+  $SystemMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'system', Content = $System);
+  $UserMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'user', Content = $UserContent);
+  $Request = export to mapping AWSBedrockImplementation.EXM_GptRequest($GptRequest) on error without rollback begin
+    change $PageHelper (ErrorMessage = 'Export mapping error: ' + $latestError/Message) refresh;
+    return;
+  end error;
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config) on error without rollback begin
+    change $PageHelper (ErrorMessage = $latestError/Message) refresh;
+    return;
+  end error;
+  $GptResponse = import from mapping AWSBedrockImplementation.IMM_GptResponse($Response) on error without rollback begin
+    change $PageHelper (ErrorMessage = 'Import mapping error: ' + $latestError/Message) refresh;
+    return;
+  end error;
+  retrieve $ChoiceList from $GptResponse/AWSBedrockImplementation.GptChoice_GptResponse;
+  $Choice = head $ChoiceList;
+  retrieve $ChoiceMessageList from $Choice/AWSBedrockImplementation.GptChoiceMessage_GptChoice;
+  $ChoiceMessage = head $ChoiceMessageList;
+  change $PageHelper (PromptResponse = $ChoiceMessage/Content) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt to AWSBedrockImplementation.Admin;
+
+/**
+ * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session. When the model call fails or a guardrail blocks it, the reason is shown on the answer card.
+ */
+create or modify microflow AWSBedrockImplementation.ACT_Ask (
+  $AskSession: AWSBedrockImplementation.AskSession
+)
+folder 'Ask'
+begin
+  if $AskSession/Question = empty or trim($AskSession/Question) = '' then
+    validation feedback $AskSession/Question message 'Write a question first';
+    return;
+  end if;
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $Database from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  retrieve $ChatModel from $Config/AWSBedrockImplementation.Config_ChatModel;
+  if $Database = empty or $Config/ChunkCount = 0 then
+    show message 'The knowledge base is empty. Create the chunks on the Tickets tab first.' type Error blocking;
+    return;
+  end if;
+  declare $StartedAt DateTime = [%CurrentDateTime%];
+  declare $UseRerank Boolean = $Config/IsRerankEnabled and $Config/RerankModelKey != '';
+  declare $Candidates Integer = $AskSession/MaxTickets;
+  if $UseRerank and $Config/RerankCandidates > $AskSession/MaxTickets then
+    set $Candidates = $Config/RerankCandidates;
+  end if;
+  declare $MinimumSimilarity Decimal = $AskSession/Strictness;
+  if $UseRerank then
+    set $MinimumSimilarity = 0;
+  end if;
+  $PageHelper = create AWSBedrockImplementation.PageHelper (SearchItem = $AskSession/Question, UserPrompt = $AskSession/Question, SystemPrompt = $AskSession/Instructions, MaxResults = $Candidates, MinimumSimilarity = $MinimumSimilarity);
+  call microflow AWSBedrockImplementation.ACT_Pagehelper_Send_SearchItem(PageHelper = $PageHelper);
+  retrieve $CandidateList from $PageHelper/AWSBedrockImplementation.TicketChunk_PageHelper;
+  $AskEntry = create AWSBedrockImplementation.AskEntry (Question = $AskSession/Question, CreatedAt = [%CurrentDateTime%], ModelName = $ChatModel/Name, StrictnessUsed = $AskSession/Strictness, StrictnessText = $AskSession/StrictnessLabel, SourceCount = 0);
+  add $AskEntry to $AskSession/AWSBedrockImplementation.AskSession_AskEntry;
+  change $AskSession (AnswerCount = $AskSession/AnswerCount + 1);
+  declare $RerankKeyToUse String = '';
+  if $UseRerank then
+    set $RerankKeyToUse = $Config/RerankModelKey;
+  end if;
+  $ChunkList = call java action AWSBedrockImplementation.JA_RerankChunks(Query = $AskSession/Question, Chunks = $CandidateList, TopN = $AskSession/MaxTickets, ModelId = $RerankKeyToUse, ModelName = $Config/RerankModelName, Config = $Config, AskEntry = $AskEntry);
+  $FoundCount = count $ChunkList;
+  change $AskEntry (SourceCount = $FoundCount);
+  if $FoundCount = 0 then
+    change $AskEntry (NoMatch = true);
+  else
+    declare $Context String = '';
+    loop $TicketChunk in $ChunkList
+    begin
+      $ContextText = call microflow AWSBedrockImplementation.SUB_AskEntry_AddSource(AskEntry = $AskEntry, TicketChunk = $TicketChunk, Number = $currentIndex + 1);
+      set $Context = $Context + $ContextText + '
+
+';
+    end loop;
+    change $PageHelper (TicketData = $Context);
+    call microflow AWSBedrockImplementation.ACT_PageHelper_PromptRequest_Send(PageHelper = $PageHelper);
+    if $PageHelper/PromptResponse = empty then
+      change $AskEntry (ErrorText = if $PageHelper/ErrorMessage != empty then $PageHelper/ErrorMessage else 'The model did not return an answer. Check the connection and the chat model.');
+    else
+      change $AskEntry (Answer = $PageHelper/PromptResponse, HasAnswer = true, SentToModel = $Context);
+    end if;
+  end if;
+  change $AskEntry (Seconds = millisecondsBetween($StartedAt, [%CurrentDateTime%]) div 1000);
+  change $AskSession (Question = empty) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.ACT_Ask to AWSBedrockImplementation.Admin;
+
+-- UI: the error of the manual "Send prompt request" button, and the guardrail option -------------------
+alter snippet AWSBedrockImplementation.SNIP_SearchAndAsk {
+  insert after ctnPromptResponse {
+    container ctnPromptError (Visible: $currentObject/ErrorMessage != empty, Class: 'bedrock-note bedrock-note-bad') {
+      dynamictext txtPromptErrorTitle (Content: 'The request failed', RenderMode: H5)
+      dynamictext txtPromptError (Content: '{1}', ContentParams: ({1} = $currentObject/ErrorMessage))
+    }
+  };
+};
+
+alter snippet AWSBedrockImplementation.SNIP_Connections {
+  insert after lgAwsFields {
+    container ctnGuardrailTag {
+      switch swGuardrailTag (Label: 'Guardrail checks only the question', booleanAttribute: GuardrailTagQuestion)
+      dynamictext txtGuardrailTagHelp (Content: 'Use this when the guardrail blocks the answer step with a security message: the instructions and ticket text are then not screened, only the question is.', Class: 'bedrock-card-subtitle')
+    }
+  };
+};

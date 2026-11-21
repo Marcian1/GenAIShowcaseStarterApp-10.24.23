@@ -93,3 +93,38 @@ test('ask tickets with GPT as the chat model uses gpt-oss, then restores Claude'
     await pick('Claude Sonnet 5');
   }
 });
+
+test('a guardrail that blocks the summary step is reported as an error, and "check only the question" lets it through', async ({ page }) => {
+  const setGuardrail = async (id, onlyQuestion) => {
+    await page.getByRole('tab', { name: 'Connections' }).click();
+    await page.locator('.mx-name-txtGuardrailId input').fill(id);
+    await page.locator('.mx-name-txtGuardrailId input').blur();
+    const sw = page.locator('.mx-name-swGuardrailTag input');
+    if ((await sw.isChecked()) !== onlyQuestion) await sw.click({ force: true });
+    await page.locator('.mx-name-btnAwsSave').click();
+    await page.getByRole('dialog').getByRole('button', { name: 'OK' }).click();
+  };
+  const ask = async (question) => {
+    await page.getByRole('tab', { name: 'Ask tickets' }).click();
+    await page.locator('.mx-name-taQuestion textarea').fill(question);
+    await page.locator('.mx-name-taQuestion textarea').blur();
+    await page.locator('.mx-name-btnAsk').click();
+  };
+  await openOverview(page);
+  try {
+    // The mock blocks any evaluated text that contains BLOCK_ME. The question alone is fine; the instructions are changed to contain it.
+    await setGuardrail('gr-test', false);
+    await page.getByRole('tab', { name: 'Ask tickets' }).click();
+    await page.locator('.mx-name-taInstructions textarea').fill('You are a support assistant. BLOCK_ME. Cite tickets like [1].');
+    await page.locator('.mx-name-taInstructions textarea').blur();
+    await ask('How do I reset my password?');
+    await expect(page.getByText('blocked this request')).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText('violates our security policy')).toBeVisible();
+    // Only the question is checked now, so the instructions are not screened any more.
+    await setGuardrail('gr-test', true);
+    await ask('How do I reset my password?');
+    await expect(page.getByText('[mock eu.anthropic.claude-sonnet-5]').first()).toBeVisible({ timeout: 60000 });
+  } finally {
+    await setGuardrail('', false);
+  }
+});

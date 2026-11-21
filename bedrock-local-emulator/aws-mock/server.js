@@ -136,6 +136,25 @@ async function ollamaChat(modelId, body) {
 }
 
 // ---------- model responses ----------
+// Guardrail simulation: with a guardrail header, any evaluated text containing BLOCK_ME is blocked. Like Bedrock, only the text inside
+// guardrail input tags is evaluated when the body carries amazon-bedrock-guardrailConfig.tagSuffix (otherwise the whole body is).
+const BLOCKED_MESSAGE = 'This request violates our security policy';
+function guardrailBlocks(payload) {
+  const suffix = payload['amazon-bedrock-guardrailConfig'] && payload['amazon-bedrock-guardrailConfig'].tagSuffix;
+  const text = JSON.stringify(payload);
+  if (!suffix) return /BLOCK_ME/.test(text);
+  const tag = 'amazon-bedrock-guardrails-guardContent_' + suffix;
+  const re = new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>', 'g');
+  let m;
+  while ((m = re.exec(text))) if (/BLOCK_ME/.test(m[1])) return true;
+  return false;
+}
+function guardrailBlockedBody(modelId) {
+  if (/openai/.test(modelId)) return { id: 'chatcmpl-mock-guard', object: 'chat.completion', model: modelId, 'amazon-bedrock-guardrailAction': 'INTERVENED',
+    choices: [{ index: 0, message: { role: 'assistant', content: BLOCKED_MESSAGE }, finish_reason: 'guardrail_intervened' }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } };
+  return { id: 'msg_mock_guard', type: 'message', role: 'assistant', model: modelId, content: [{ type: 'text', text: BLOCKED_MESSAGE }],
+    stop_reason: 'guardrail_intervened', 'amazon-bedrock-guardrailAction': 'INTERVENED', usage: { input_tokens: 1, output_tokens: 1 } };
+}
 function anthropic(modelId, body) {
   const msgs = Array.isArray(body.messages) ? body.messages : [];
   const last = msgs.length ? msgs[msgs.length - 1].content : '';
@@ -228,6 +247,10 @@ http.createServer(async (req, res) => {
       const guard = req.headers['x-amzn-bedrock-guardrailidentifier'];
       log('Bedrock InvokeModel', modelId, guard ? `(guardrail ${guard}/${req.headers['x-amzn-bedrock-guardrailversion']})` : '');
       let out;
+      if (guard && /anthropic|openai/.test(modelId) && guardrailBlocks(payload)) {
+        log('  guardrail', guard, 'INTERVENED');
+        return json(res, 200, guardrailBlockedBody(modelId), { 'x-amzn-bedrock-invocation-latency': '5' });
+      }
       if (/anthropic/.test(modelId)) out = (await useOllama()) ? await ollamaChat(modelId, payload) : anthropic(modelId, payload);
       else if (/openai/.test(modelId)) {
         if (!Array.isArray(payload.messages) || !payload.messages.length) return json(res, 400, { message: 'Malformed input request: messages is required' }, { 'x-amzn-errortype': 'ValidationException' });

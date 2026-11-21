@@ -1,0 +1,40 @@
+mdl 1;
+drop microflow AWSBedrockImplementation.ACT_TicketList_CreateChunks_StoreInVectorDB;
+/**
+ * Deletes the knowledge base and refills it: reads the tickets in batches of 96 (the Cohere limit per request) and embeds and stores each batch. Called by the Create / Rebuild chunks buttons.
+ */
+create microflow AWSBedrockImplementation.ACT_TicketList_CreateChunks_StoreInVectorDB ()
+folder 'Ticket'
+begin
+  $Config = call microflow AWSBedrockImplementation.DS_Config();
+  retrieve $DatabaseConfiguration from $Config/AWSBedrockImplementation.Config_DatabaseConfiguration;
+  @caption 'exists?'
+  if $DatabaseConfiguration != empty then
+    $PgVectorKnowledgeBase = call microflow PgVectorKnowledgeBase.PgVectorKnowledgeBase_GetOrCreate(DatabaseConfiguration = $DatabaseConfiguration, KnowledgeBaseName = 'KnowledgeBase');
+    call microflow PgVectorKnowledgeBase.KnowledgeBase_Delete(DeployedKnowledgeBase = $PgVectorKnowledgeBase);
+    declare $Offset Integer = 0;
+    @annotation(text: '96 because of a limit mentioned in the Cohere V4 documentation on amazon website', size: (240, 80))
+    declare $Amount Integer = 96;
+    while true
+    begin
+      retrieve $TicketList from AWSBedrockImplementation.Ticket
+        sort by TicketId asc
+        limit $Amount
+        offset $Offset;
+      $Count = count $TicketList;
+      @caption 'Batch empty?'
+      if $Count = 0 then
+        break;
+      end if;
+      $isSuccess = call microflow AWSBedrockImplementation.SUB_BatchTicketList_CreateChunks_InsertInVectorDB(TicketList = $TicketList, PgVectorKnowledgeBase = $PgVectorKnowledgeBase);
+      set $Offset = $Offset + $Amount;
+    end while;
+  else
+    show message 'Database configuration not found!' type Error blocking;
+    log error node getCaption(AWSBedrockImplementation.ENUM_LogNode.LogNode) 'Database configuration not found! 
+';
+    return;
+  end if;
+end;
+
+grant execute on microflow AWSBedrockImplementation.ACT_TicketList_CreateChunks_StoreInVectorDB to AWSBedrockImplementation.Admin;

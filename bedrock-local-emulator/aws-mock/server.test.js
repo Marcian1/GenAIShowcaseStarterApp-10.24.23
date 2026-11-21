@@ -41,7 +41,7 @@ test('Bedrock rejects unsigned calls', async () => {
 });
 test('ListFoundationModels returns the demo models', async () => {
   const j = await (await fetch(BASE + '/foundation-models', { headers: signed() })).json();
-  assert.deepEqual(j.modelSummaries.map(m => m.providerName).sort(), ['Amazon', 'Anthropic', 'Cohere', 'Cohere', 'OpenAI', 'OpenAI']);
+  assert.deepEqual(j.modelSummaries.map(m => m.providerName).sort(), ['Amazon', 'Anthropic', 'Anthropic', 'Cohere', 'Cohere', 'OpenAI', 'OpenAI']);
 });
 test('OpenAI gpt-oss invoke uses the chat-completions format', async () => {
   const r = await post('/model/openai.gpt-oss-120b-1:0/invoke', { messages: [{ role: 'system', content: 'be brief' }, { role: 'user', content: 'hello gpt' }], max_tokens: 100, reasoning_effort: 'high' }, signed());
@@ -94,4 +94,27 @@ test('Cohere Rerank returns the best documents first with relevance scores', asy
 });
 test('Cohere Rerank rejects a body without documents', async () => {
   assert.equal((await post('/model/cohere.rerank-v3-5:0/invoke', { query: 'x' }, signed())).status, 400);
+});
+
+const guardHeaders = () => ({ ...signed(), 'x-amzn-bedrock-guardrailidentifier': 'gr-test', 'x-amzn-bedrock-guardrailversion': '1' });
+test('Guardrail blocks the whole request when BLOCK_ME is anywhere and no input tags are used', async () => {
+  const j = await (await post('/model/eu.anthropic.claude-sonnet-5/invoke', { system: 'be brief', messages: [{ role: 'user', content: 'ticket text BLOCK_ME and a question' }] }, guardHeaders())).json();
+  assert.equal(j.stop_reason, 'guardrail_intervened');
+  assert.equal(j['amazon-bedrock-guardrailAction'], 'INTERVENED');
+  assert.match(j.content[0].text, /violates our security policy/);
+});
+test('Guardrail evaluates only the tagged question when a tag suffix is sent', async () => {
+  const tag = 'amazon-bedrock-guardrails-guardContent_askq';
+  const body = (q) => ({ 'amazon-bedrock-guardrailConfig': { tagSuffix: 'askq' }, system: 'x', messages: [{ role: 'user', content: 'ticket BLOCK_ME text\n<' + tag + '>' + q + '</' + tag + '>' }] });
+  const ok = await (await post('/model/eu.anthropic.claude-sonnet-5/invoke', body('how do I reset my password?'), guardHeaders())).json();
+  assert.equal(ok.stop_reason, 'end_turn');
+  const blocked = await (await post('/model/eu.anthropic.claude-sonnet-5/invoke', body('BLOCK_ME please'), guardHeaders())).json();
+  assert.equal(blocked.stop_reason, 'guardrail_intervened');
+});
+test('Guardrail also blocks GPT and is ignored without a guardrail header', async () => {
+  const req = { messages: [{ role: 'user', content: 'BLOCK_ME' }] };
+  const g = await (await post('/model/openai.gpt-oss-120b-1:0/invoke', req, guardHeaders())).json();
+  assert.equal(g.choices[0].finish_reason, 'guardrail_intervened');
+  const n = await (await post('/model/openai.gpt-oss-120b-1:0/invoke', req, signed())).json();
+  assert.equal(n.choices[0].finish_reason, 'stop');
 });

@@ -1,0 +1,9 @@
+mdl 1;
+-- Helpers for tests/mdl/guardrail.test.mdl (summary step vs. guardrails).
+create or modify microflow BedrockTests.UserContent ($Tickets: String, $Question: String, $Tag: Boolean, $GuardrailId: String) returns String
+begin
+  $Config = create AWSBedrockImplementation.Config (GuardrailTagQuestion = $Tag, BedrockGuardrailIdentifier = $GuardrailId);
+  $PageHelper = create AWSBedrockImplementation.PageHelper (TicketData = $Tickets, UserPrompt = $Question);
+  $Content = call microflow AWSBedrockImplementation.SUB_PageHelper_UserContent(PageHelper = $PageHelper, Config = $Config);
+  return $Content;
+end;

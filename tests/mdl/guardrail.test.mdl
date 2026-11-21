@@ -1,0 +1,22 @@
+/**
+ * @test Without the guardrail option the user message is the tickets followed by the question (no tags)
+ * @expect $result = '<ticket number="1">a</ticket>
+How do I reset?'
+ */
+$result = CALL MICROFLOW BedrockTests.UserContent(Tickets = '<ticket number="1">a</ticket>', Question = 'How do I reset?', Tag = false, GuardrailId = 'gr-1');
+/
+
+/**
+ * @test With a guardrail and "check only the question", only the question is wrapped in guardrail input tags
+ * @expect contains($result, '<ticket number="1">a</ticket>')
+ * @expect contains($result, '<amazon-bedrock-guardrails-guardContent_askq>How do I reset?</amazon-bedrock-guardrails-guardContent_askq>')
+ */
+$result = CALL MICROFLOW BedrockTests.UserContent(Tickets = '<ticket number="1">a</ticket>', Question = 'How do I reset?', Tag = true, GuardrailId = 'gr-1');
+/
+
+/**
+ * @test The option does nothing without a guardrail identifier (tags would be meaningless)
+ * @expect not(contains($result, 'guardContent'))
+ */
+$result = CALL MICROFLOW BedrockTests.UserContent(Tickets = 't', Question = 'q', Tag = true, GuardrailId = '');
+/
