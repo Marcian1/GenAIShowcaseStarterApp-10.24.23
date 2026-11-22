@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask Tickets Simple</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+/* Simple Ask tickets: status line, one question box, answers with their sources.
+   Only Atlas widgets (container, dynamic text, text area, buttons, list view, accordion, markdown) + a few bedrock- classes. */
+:root{
+  --page:#f8f8f8; --surface:#fff; --soft:#f4f5f8; --line:#e0e2e8; --fg:#0a1324; --muted:#5f6675;
+  --brand:#264ae5; --brand-hover:#1b37b5; --brand-soft:#e9edff;
+  --ok:#2e8f31; --warn:#a56a00; --warn-soft:#fdf1d8; --nav:#020557; --side:#24276c;
+  --font:'Open Sans',system-ui,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--fg);font:14px/1.5 var(--font)}
+h2,h3,h4,p{margin:0} button,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* app chrome stand-in */
+.top{background:var(--nav);color:#fff;height:48px;display:flex;align-items:center;gap:10px;padding:0 16px}
+.top b{margin-right:auto}
+.tbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:4px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}
+.tbtn[aria-pressed=true]{background:#fff;color:var(--nav)}
+.layout{display:grid;grid-template-columns:200px minmax(0,1fr);min-height:calc(100vh - 48px)}
+.side{background:var(--side);padding:14px 0}.side a{display:block;padding:9px 20px;color:#c9ccf0;font-size:13px}.side a.on{background:rgba(255,255,255,.14);color:#fff;font-weight:600}
+main{padding:20px 24px 48px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.side{display:none}main{padding:14px}}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin:12px 0 20px}
+.tabs span{padding:10px 16px;font-weight:600;color:var(--muted)}.tabs .on{color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-1px}
+body.page .tabs{display:none}
+
+/* ---------- the component ---------- */
+.ask{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:4px;padding:8px 18px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--brand-hover)} .btn[disabled]{opacity:.55;cursor:wait}
+.btn.link{background:none;border-color:transparent;color:var(--brand);padding:4px 8px;font-weight:600}
+.btn.link:hover{background:var(--brand-soft)}
+.btn.sm{padding:4px 12px;font-size:12px}
+
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.status.warn{background:var(--warn-soft);color:var(--fg);padding:8px 12px;border-radius:4px;justify-content:space-between}
+.status.warn .dot{background:#eca51c}
+.status .l{display:flex;align-items:center;gap:8px}
+
+.box{background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 2px rgba(10,19,36,.05);padding:14px}
+.box textarea{display:block;width:100%;border:1px solid #ced0d3;border-radius:4px;padding:10px 12px;font-size:15px;min-height:84px;resize:vertical}
+.box textarea:focus{border-color:var(--brand);outline:0;box-shadow:0 0 0 3px var(--brand-soft)}
+.box .row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+.hint{font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:5px 13px;font-size:12.5px;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+
+.head{display:flex;justify-content:space-between;align-items:center}
+.head h4{font-size:15px}
+
+.answer{background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 2px rgba(10,19,36,.05);overflow:hidden}
+.answer .q{padding:12px 18px;background:var(--soft);border-bottom:1px solid var(--line);font-weight:600;font-size:15px;overflow-wrap:anywhere}
+.answer .q small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.answer .body{padding:16px 18px;font-size:14.5px;line-height:1.65}
+.answer .body p+p,.answer .body ul{margin-top:10px}.answer .body ul{padding-left:20px;margin-bottom:0}
+.answer .foot{display:flex;justify-content:space-between;align-items:center;padding:6px 14px 6px 18px;border-top:1px solid var(--line)}
+
+/* Atlas accordion look */
+.acc>button{width:100%;display:flex;justify-content:space-between;align-items:center;background:none;border:0;border-top:1px solid var(--line);padding:11px 18px;font-weight:600;cursor:pointer;text-align:left}
+.acc>button:hover{background:var(--soft)}
+.acc svg{transition:transform .15s}.acc.open svg{transform:rotate(180deg)}
+.acc .in{padding:4px 18px 14px;display:none}.acc.open .in{display:block}
+.src{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line)}.src:first-child{border-top:0}
+.src .n{flex:none;width:20px;height:20px;border-radius:4px;background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:700;display:grid;place-items:center;margin-top:2px}
+.src b{font-size:13px}.src .s{font-size:12px;color:var(--muted)}
+
+.empty{text-align:center;color:var(--muted);padding:18px 0 4px}
+.spin{width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;animation:sp .8s linear infinite}
+.spin.dark{border-color:#d5d8e0;border-top-color:var(--brand)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.blocker{position:fixed;inset:0;background:rgba(255,255,255,.55);z-index:100;display:grid;place-items:center}
+.blocker div{background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 24px rgba(10,19,36,.18);padding:14px 20px;display:flex;gap:12px;align-items:center;font-weight:600}
+.working{display:flex;align-items:center;gap:10px;padding:18px;color:var(--muted)}
+
+/* Mendix overlay */
+body.mx [data-mx]{position:relative;outline:1.5px dashed #2e8f31;outline-offset:2px}
+body.mx [data-mx]::after{content:attr(data-mx);position:absolute;top:-9px;left:6px;background:#2e8f31;color:#fff;font:600 10px/1.55 monospace;padding:0 6px;border-radius:3px;z-index:30;white-space:nowrap;pointer-events:none}
+body.mx [data-mx][data-c=css]{outline-color:#b45309}body.mx [data-mx][data-c=css]::after{background:#b45309}
+</style>
+</head>
+<body>
+<header class="top"><b>Bedrock Showcase</b>
+  <button class="tbtn" id="vBtn" aria-pressed="false">Show as own page</button>
+  <button class="tbtn" id="mxBtn" aria-pressed="false">Show Mendix widgets</button>
+</header>
+<div class="layout">
+<nav class="side"><a href="#">Overview</a><a class="on" href="#">Ask tickets</a><a href="#">Tickets</a><a href="#">Models</a></nav>
+<main>
+  <h2 id="title">Overview</h2>
+  <div class="tabs"><span>Setup</span><span>Models</span><span>Tickets</span><span class="on">Ask tickets</span></div>
+
+  <section class="ask" data-mx="snippet SNIP_AskTickets" data-c="css">
+
+    <!-- the question -->
+    <div class="box" data-mx="container (bedrock-card)" data-c="css">
+      <div data-mx="textarea taQuestion" data-c="ok"><textarea id="q" placeholder="Ask a question about your tickets…" aria-label="Your question"></textarea></div>
+      <div class="chips" id="chips" data-mx="actionbutton ×3 (bedrock-example)" data-c="ok"></div>
+      <div class="row"><span class="hint">Answers are based on your tickets. The tickets used are listed under each answer.</span>
+        <button class="btn" id="ask" data-mx="actionbutton btnAsk → ACT_Ask" data-c="ok">Ask</button></div>
+    </div>
+
+    <!-- 3. answers -->
+    <div class="head" id="ansHead" hidden><h4>Answers</h4><button class="btn link sm" id="clear" data-mx="actionbutton (Link) ACT_AskSession_ClearAnswers" data-c="ok">Clear</button></div>
+    <div id="list" style="display:flex;flex-direction:column;gap:16px" data-mx="listview lvAnswers (newest first)" data-c="ok"></div>
+    <p class="empty" id="empty" data-mx="dynamictext (bedrock-empty)" data-c="css">No answers yet. Pick an example or write your own question.</p>
+  </section>
+</main>
+</div>
+
+<div class="blocker" id="blocker" hidden><div><span class="spin dark"></span><span id="blockMsg">Working…</span></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const examples=['Why can’t users save their documents?','How should we reply to customers who cannot submit the form?','Which printing problems are already solved?'];
+const KB=[
+ {k:['save','document'],a:'<p>Saving fails for two reasons in the tickets: the <b>autosave temp folder is full</b>, and users on <b>shared drives lose write access</b> after a password change.</p><ul><li>Clear the temp folder or raise the quota.</li><li>Re-map the shared drive, then save again.</li></ul>',
+  s:[['Document will not save, disk full','TCK-1042','Autosave temp folder reached its quota after editing a large file.'],['Save fails on shared drive','TCK-0987','After a password reset the mapped drive keeps old credentials.']]},
+ {k:['form','submit','reply'],a:'<p>Suggested reply:</p><ul><li>Apologise and confirm the issue is known.</li><li>Ask for the browser: <b>older Safari versions</b> block the submit button.</li><li>Offer the PDF form or a call as a workaround.</li></ul>',
+  s:[['Submit button does nothing','TCK-1210','Customers on Safari 14 cannot submit the contact form.'],['Form validation blocks valid input','TCK-1188','Postal code pattern was too strict. Fixed.']]},
+ {k:['print'],a:'<p>Three printing problems are marked <b>solved</b>:</p><ul><li>Blank pages from the PDF export</li><li>Wrong paper size on the A4 template</li><li>Printer queue stuck after a driver update</li></ul>',
+  s:[['PDF export prints blank pages','TCK-0911','Fonts were not embedded. Fixed in release 3.2.'],['A4 template prints as Letter','TCK-0934','Paper size came from the server region.'],['Print queue stuck after driver update','TCK-1009','Fixed with driver 5.1.']]}
+];
+const fallback={a:'<p>I found a few related tickets, but none answer this directly. Try asking about saving, forms or printing.</p>',s:[['Save fails on shared drive','TCK-0987','Possibly related.']]};
+let answers=[];
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const chev='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+function render(){
+ $('#chips').innerHTML=examples.map(e=>`<button class="chip" data-e="${esc(e)}">${esc(e)}</button>`).join('');
+ $('#empty').hidden=answers.length>0; $('#ansHead').hidden=!answers.length;
+ $('#list').innerHTML=answers.map((a,i)=>`
+  <article class="answer">
+   <div class="q">${esc(a.q)}<small>${a.t}</small></div>
+   ${a.nomatch?`<div class="body"><div class="status warn"><span class="l"><span class="dot"></span>No tickets matched closely enough, so nothing was sent to the model.</span></div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-loosen="${i}">Loosen the match and ask again</button><button class="btn link sm" data-again="${i}">Ask again as is</button></div></div>`:`
+   <div class="body">${a.a}</div>
+   <div class="acc ${a.open?'open':''}" data-i="${i}"><button>Based on ${a.s.length} ticket${a.s.length>1?'s':''} ${chev}</button>
+    <div class="in">${a.s.map((s,j)=>`<div class="src"><span class="n">${j+1}</span><div><b>${s[0]}</b> <span class="hint">${s[1]}</span><div class="s">${s[2]}</div></div></div>`).join('')}</div></div>
+   <div class="foot"><span class="hint">${a.sec} s</span><button class="btn link sm" data-again="${i}">Ask again</button></div>`}
+  </article>`).join('');
+}
+function block(msg,ms,done){$('#blockMsg').textContent=msg;$('#blocker').hidden=false;setTimeout(()=>{$('#blocker').hidden=true;done()},ms)}
+function ask(q){
+ q=q.trim(); if(!q){return}
+ block('Searching the tickets and asking the chat model…',1700,()=>{
+  const l=q.toLowerCase();const k=KB.find(k=>k.k.some(w=>l.includes(w)));
+  const a={q,t:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),sec:(1.8+Math.random()*1.5).toFixed(1)};
+  if(k)Object.assign(a,{a:k.a,s:k.s}); else a.nomatch=true;
+  answers.unshift(a);$('#q').value='';render()});
+}
+document.addEventListener('click',e=>{
+ const c=e.target.closest('.chip'); if(c){ask(c.dataset.e);return}
+ const lo=e.target.closest('[data-loosen]'); if(lo){ask('Which printing problems are already solved?');return}
+ const g=e.target.closest('[data-again]'); if(g){ask(answers[g.dataset.again].q);return}
+ const acc=e.target.closest('.acc>button'); if(acc){const a=answers[acc.parentNode.dataset.i];a.open=!a.open;render()}
+});
+$('#ask').onclick=()=>ask($('#q').value);
+$('#clear').onclick=()=>{answers=[];render()};
+$('#vBtn').onclick=e=>{const p=document.body.classList.toggle('page');e.currentTarget.setAttribute('aria-pressed',p);e.currentTarget.textContent=p?'Show as tab':'Show as own page';$('#title').textContent=p?'Ask tickets':'Overview'};
+$('#mxBtn').onclick=e=>{e.currentTarget.setAttribute('aria-pressed',document.body.classList.toggle('mx'))};
+render();
+</script>
+</body>
+</html>

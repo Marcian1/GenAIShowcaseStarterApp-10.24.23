@@ -436,8 +436,7 @@ textarea.bedrock-mono,
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 12px;
-  padding-top: 10px;
+  padding: 8px 18px;
   border-top: 1px solid $bedrock-line;
 }
 
@@ -624,4 +623,46 @@ textarea.bedrock-mono,
     margin-top: 4px;
     line-height: 1.4;
   }
+}
+
+// ---- Simple Ask tickets (SNIP_AskTickets, mdl-build/50_ask_simple.mdl) ----------
+.bedrock-ask {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.bedrock-sources-accordion {
+  border-top: 1px solid $bedrock-line;
+
+  .accordion-group-header,
+  .accordion-group-header button {
+    background: transparent;
+  }
+
+  .accordion-group-content {
+    padding: 0 18px 8px;
+  }
+}
+
+.bedrock-sources-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bedrock-source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid $bedrock-line;
+}
+
+.mx-listview-item:first-child .bedrock-source-row {
+  border-top: 0;
+}
+
+.bedrock-source-row .bedrock-source-snippet {
+  display: block;
+  margin-top: 2px;
+  -webkit-line-clamp: unset;
 }

@@ -1,0 +1,116 @@
+mdl 1;
+
+-- ============================================================================
+-- Simple Ask tickets (supersedes the snippet of 14 / 34 / 49): one question box, the answers, their tickets.
+-- No status chips, no notes, no options. ACT_Ask still guards an empty question and an empty knowledge base.
+-- The same snippet is used on the Ask tickets tab of the Overview page and on the own page AskTickets.
+-- Mockup: mockups/bedrock-ask-tickets.html
+-- ============================================================================
+create or modify snippet AWSBedrockImplementation.SNIP_AskTickets folder 'Page' (Params: ( $Config: AWSBedrockImplementation.Config )) {
+  container ctnAskTickets (Class: 'bedrock-ask') {
+    layoutgrid lgAsk {
+      row {
+        column (DesktopWidth: AutoFill) {
+          dataview dvAskSession (DataSource: microflow AWSBedrockImplementation.DS_AskSession, FormOrientation: Vertical) {
+            container ctnComposer (Class: 'bedrock-card bedrock-composer') {
+              container ctnComposerBody (Class: 'bedrock-card-body') {
+                dynamictext txtQuestionLabel (Content: 'Ask about your tickets', Class: 'bedrock-label')
+                textarea taQuestion (Label: '', Attribute: Question)
+                container ctnExamples (Class: 'bedrock-examples') {
+                  actionbutton btnExample1 (Caption: 'Why can’t users save their documents?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'Why can’t users save their documents?'), Class: 'bedrock-example')
+                  actionbutton btnExample2 (Caption: 'How should we reply to customers who cannot submit the form?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'How should we reply to customers who cannot submit the form?'), Class: 'bedrock-example')
+                  actionbutton btnExample3 (Caption: 'Which printing problems are already solved?', Action: call microflow AWSBedrockImplementation.ACT_AskSession_UseExample(Example = 'Which printing problems are already solved?'), Class: 'bedrock-example')
+                }
+                container ctnAskActions (Class: 'bedrock-composer-actions') {
+                  dynamictext txtAskHintText (Content: 'Answers are based on your tickets. The tickets used are listed under each answer.', Class: 'bedrock-hint')
+                  actionbutton btnAsk (Caption: 'Ask', Action: call microflow AWSBedrockImplementation.ACT_Ask with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), ButtonStyle: Primary)
+                }
+              }
+            }
+            container ctnAnswersHeader (Visible: $currentObject/AnswerCount > 0, Class: 'bedrock-answers-header') {
+              dynamictext txtAnswersTitle (Content: 'Answers', RenderMode: H4)
+              actionbutton btnClear (Caption: 'Clear', Action: call microflow AWSBedrockImplementation.ACT_AskSession_ClearAnswers, Class: 'btn-link')
+            }
+            dynamictext txtNoAnswers (Content: 'No answers yet. Pick an example or write your own question.', Visible: $currentObject/AnswerCount = 0, Class: 'bedrock-empty')
+            listview lvAnswers (DataSource: microflow AWSBedrockImplementation.DS_AskEntries(AskSession = $currentObject), Visible: $currentObject/AnswerCount > 0, DesignProperties: ('Style': 'No styling')) {
+              container ctnEntry (Class: 'bedrock-card bedrock-entry') {
+                container ctnEntryHeader (Class: 'bedrock-entry-header') {
+                  dynamictext txtEntryQuestion (Content: '{1}', ContentParams: ({1} = $currentObject/Question), RenderMode: H4, Class: 'bedrock-entry-question')
+                  dynamictext txtEntryTime (Content: '{1}', ContentParams: ({1} = formatDateTime($currentObject/CreatedAt, 'HH:mm')), Class: 'bedrock-hint')
+                }
+                container ctnEntryNoMatch (Visible: $currentObject/NoMatch, Class: 'bedrock-entry-body') {
+                  container ctnEntryNoMatchNote (Class: 'bedrock-note bedrock-note-warn') {
+                    dynamictext txtNoMatchText (Content: 'No tickets matched closely enough, so nothing was sent to {1}.', ContentParams: ({1} = $currentObject/ModelName))
+                  }
+                  container ctnEntryNoMatchActions (Class: 'bedrock-actions') {
+                    actionbutton btnEntryLoosen (Caption: 'Loosen the match and ask again', Action: call microflow AWSBedrockImplementation.ACT_AskEntry_LoosenAndAsk(AskEntry = $currentObject, AskSession = $dvAskSession) with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), ButtonStyle: Primary)
+                    actionbutton btnEntryAskAsIs (Caption: 'Ask again as is', Action: call microflow AWSBedrockImplementation.ACT_AskEntry_AskAgain(AskEntry = $currentObject, AskSession = $dvAskSession) with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), ButtonStyle: Default)
+                  }
+                }
+                container ctnEntryError (Visible: $currentObject/ErrorText != empty, Class: 'bedrock-entry-body') {
+                  container ctnEntryErrorNote (Class: 'bedrock-note bedrock-note-bad') {
+                    dynamictext txtEntryError (Content: '{1}', ContentParams: ({1} = $currentObject/ErrorText))
+                  }
+                }
+                container ctnEntryAnswer (Visible: $currentObject/HasAnswer) {
+                  container ctnEntryAnswerText (Class: 'bedrock-entry-body bedrock-entry-answer') {
+                    markdown mdEntryAnswer (stringAttribute: Answer)
+                  }
+                  accordion accSources (collapsible: true, expandBehavior: 'multipleExpanded', Class: 'bedrock-sources-accordion') {
+                    group grpSources (headerRenderMode: 'custom', initialCollapsedState: 'collapsed') {
+                      headercontent {
+                        dynamictext txtSourcesHeader (Content: 'Based on {1}', ContentParams: ({1} = toString($currentObject/SourceCount) + (if $currentObject/SourceCount = 1 then ' ticket' else ' tickets')), Class: 'bedrock-sources-title')
+                      }
+                      content {
+                        listview lvSources (DataSource: $currentObject/AWSBedrockImplementation.AskEntry_AskSource, DesignProperties: ('Style': 'No styling')) {
+                          container ctnSource (Class: 'bedrock-source-row') {
+                            dynamictext txtSourceNumber (Content: '{1}', ContentParams: ({1} = toString($currentObject/Number)), Class: 'bedrock-source-number')
+                            container ctnSourceText {
+                              dynamictext txtSourceTitle (Content: '{1}', ContentParams: ({1} = $currentObject/Title), RenderMode: H5, Class: 'bedrock-cell-title')
+                              dynamictext txtSourceRef (Content: '{1}', ContentParams: ({1} = $currentObject/TicketRef), Class: 'bedrock-hint')
+                              dynamictext txtSourceSnippet (Content: '{1}', ContentParams: ({1} = $currentObject/Snippet), Class: 'bedrock-source-snippet')
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  container ctnEntryFooter (Class: 'bedrock-entry-footer') {
+                    dynamictext txtEntryInfo (Content: '{1} s · {2}', ContentParams: ({1} = toString(round($currentObject/Seconds, 1)), {2} = $currentObject/ModelName), Class: 'bedrock-hint')
+                    actionbutton btnEntryAskAgain (Caption: 'Ask again', Action: call microflow AWSBedrockImplementation.ACT_AskEntry_AskAgain(AskEntry = $currentObject, AskSession = $dvAskSession) with (ProgressBar: Blocking, ProgressMessage: 'Searching the tickets and asking the chat model…'), Class: 'btn-link')
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+-- ============================================================================
+-- Own page: the same snippet, wrapped in the config data view like the Overview page.
+-- ============================================================================
+create or modify page AWSBedrockImplementation.AskTickets folder 'USEME' (
+  Title: 'Ask tickets',
+  Layout: AWSBedrockImplementation.Layout_TopBar,
+  Url: 'aws-bedrock-ask-tickets'
+) {
+  container bedrockAskPage (Class: 'aws-bedrock-page') {
+    container askPageHeader (Class: 'bedrock-page-header') {
+      dynamictext askPageTitle (Content: 'Ask tickets', RenderMode: H2)
+    }
+    layoutgrid lgAskPage {
+      row {
+        column (DesktopWidth: AutoFill) {
+          dataview dvAskConfig (DataSource: microflow AWSBedrockImplementation.DS_Config_Setup) {
+            snippetcall scAskTicketsPage (Snippet: AWSBedrockImplementation.SNIP_AskTickets)
+          }
+        }
+      }
+    }
+  }
+};
+
+grant view on page AWSBedrockImplementation.AskTickets to AWSBedrockImplementation.Admin, AWSBedrockImplementation.User;
