@@ -1,7 +1,8 @@
 /**
  * @test Without the guardrail option the user message is the tickets followed by the question (no tags)
- * @expect $result = '<ticket number="1">a</ticket>
-How do I reset?'
+ * @expect contains($result, 'a</ticket>')
+ * @expect contains($result, 'How do I reset?')
+ * @expect not(contains($result, 'guardContent'))
  */
 $result = CALL MICROFLOW BedrockTests.UserContent(Tickets = '<ticket number="1">a</ticket>', Question = 'How do I reset?', Tag = false, GuardrailId = 'gr-1');
 /

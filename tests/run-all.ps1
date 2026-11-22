@@ -6,9 +6,13 @@ $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $mpr = 'GenAIShowcaseStarterApp.mpr'
 $results = [ordered]@{}
+$times = [ordered]@{}
+$suiteTimer = [Diagnostics.Stopwatch]::StartNew()
 function Step($name, [scriptblock]$body) {
   Write-Host "`n=== $name ===" -ForegroundColor Cyan
+  $sw = [Diagnostics.Stopwatch]::StartNew()
   & $body
+  $script:times[$name] = $sw.Elapsed.TotalSeconds
   $ok = ($LASTEXITCODE -eq 0)
   $script:results[$name] = $ok
   if ($ok) { Write-Host "PASS: $name" -ForegroundColor Green } else { Write-Host "FAIL: $name" -ForegroundColor Red }
@@ -46,7 +50,8 @@ if (-not $SkipUi) {
   mxcli exec bedrock-local-emulator/enable_test_user.mdl -p $mpr | Out-Host
   try {
     # --detach returns once the app serves (or fails); starting it hidden with a polling loop hung when a stale run state existed.
-    mxcli run --local --detach --db-type hsqldb --app-port 8091 --admin-port 8092 --serve-port 8093 -p $mpr 2>&1 | Out-Host
+    mxcli run --local --detach --db-type hsqldb --app-port 8091 --admin-port 8092 --serve-port 8093 -p $mpr *> .mxcli/ui-start.log
+    Get-Content .mxcli/ui-start.log | Out-Host   # a pipe straight from the detached runtime can keep this script waiting for as long as the app lives
     $up = $false
     try { $up = (Invoke-WebRequest http://localhost:8091/ -UseBasicParsing -TimeoutSec 10).StatusCode -eq 200 } catch {}
     if (-not $up) { Write-Host 'App did not start on :8091' -ForegroundColor Red; $results['UI tests (Playwright)'] = $false }
@@ -64,5 +69,6 @@ if (-not $SkipUi) {
 }
 
 Write-Host "`n=== Summary ===" -ForegroundColor Cyan
-$results.GetEnumerator() | ForEach-Object { '{0,-6} {1}' -f ($(if ($_.Value) {'PASS'} else {'FAIL'})), $_.Key }
+$results.GetEnumerator() | ForEach-Object { '{0,-6} {1,6}s  {2}' -f ($(if ($_.Value) {'PASS'} else {'FAIL'})), [int]$script:times[$_.Key], $_.Key }
+Write-Host ('Total: {0}s' -f [int]$suiteTimer.Elapsed.TotalSeconds)
 if ($results.Values -contains $false) { exit 1 } else { exit 0 }

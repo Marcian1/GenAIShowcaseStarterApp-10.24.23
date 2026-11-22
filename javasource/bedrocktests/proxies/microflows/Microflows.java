@@ -171,4 +171,36 @@ public final class Microflows
 		Object result = seedAndCountHaikuBuilder().execute(context);
 		return (java.lang.Long) result;
 	}
+	public static com.mendix.core.actionmanagement.MicroflowCallBuilder userContentBuilder(
+		java.lang.String _tickets,
+		java.lang.String _question,
+		boolean _tag,
+		java.lang.String _guardrailId
+	)
+	{
+		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("BedrockTests.UserContent");
+		builder = builder.withParam("Tickets", _tickets);
+		builder = builder.withParam("Question", _question);
+		builder = builder.withParam("Tag", _tag);
+		builder = builder.withParam("GuardrailId", _guardrailId);
+		return builder;
+	}
+
+	public static java.lang.String userContent(
+		IContext context,
+		java.lang.String _tickets,
+		java.lang.String _question,
+		boolean _tag,
+		java.lang.String _guardrailId
+	)
+	{
+		Object result = userContentBuilder(
+				_tickets,
+				_question,
+				_tag,
+				_guardrailId
+			)
+			.execute(context);
+		return (java.lang.String) result;
+	}
 }

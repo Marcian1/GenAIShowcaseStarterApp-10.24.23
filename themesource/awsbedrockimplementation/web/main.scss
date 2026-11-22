@@ -585,3 +585,43 @@ textarea.bedrock-mono,
     margin-top: 0;
   }
 }
+
+// Connection fields: the label sits above its input so long labels ("Guardrail identifier") are not truncated.
+.bedrock-fields-stacked {
+  .mx-textbox.form-group,
+  .mx-textbox.form-group.no-columns {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    margin: 0 0 16px;
+
+    > label,
+    > .control-label,
+    > [class*="col-"] {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      padding-left: 0;
+      padding-right: 0;
+      text-align: left;
+    }
+  }
+}
+
+// The "check only the question" switch: spaced away from the fields above and the result below.
+.bedrock-switch-row {
+  margin: 8px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid $bedrock-line;
+  border-radius: 4px;
+
+  .form-group {
+    margin-bottom: 6px;
+  }
+
+  .bedrock-card-subtitle {
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+}

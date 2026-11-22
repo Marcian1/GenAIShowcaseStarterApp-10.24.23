@@ -46,7 +46,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session.
+	 * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session. When the model call fails or a guardrail blocks it, the reason is shown on the answer card.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_AskBuilder(
 		awsbedrockimplementation.proxies.AskSession _askSession
@@ -58,7 +58,7 @@ public final class Microflows
 	}
 
 	/**
-	 * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session.
+	 * The Ask button of the Ask tickets tab. Embeds the question (input type search_query), fetches candidate tickets from pgvector, reranks them with the selected reranking model and keeps the best ones (without a reranker: filters by the match strictness), sends the numbered tickets to the chat model and adds the answer and its sources to the session. When the model call fails or a guardrail blocks it, the reason is shown on the answer card.
 	 */
 	public static void aCT_Ask(
 		IContext context,
@@ -559,9 +559,6 @@ public final class Microflows
 	{
 		aCT_ListFoundationModelsBuilder().execute(context);
 	}
-	/**
-	 * Sends the system prompt, the ticket data and the user prompt to the chat model selected on the Config (Claude or GPT) and stores the answer text on the PageHelper.
-	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder aCT_PageHelper_PromptRequest_SendBuilder(
 		awsbedrockimplementation.proxies.PageHelper _pageHelper
 	)
@@ -571,9 +568,6 @@ public final class Microflows
 		return builder;
 	}
 
-	/**
-	 * Sends the system prompt, the ticket data and the user prompt to the chat model selected on the Config (Claude or GPT) and stores the answer text on the PageHelper.
-	 */
 	public static void aCT_PageHelper_PromptRequest_Send(
 		IContext context,
 		awsbedrockimplementation.proxies.PageHelper _pageHelper
@@ -1263,9 +1257,6 @@ public final class Microflows
 			)
 			.execute(context);
 	}
-	/**
-	 * Same as the Claude prompt for the ticket Q&A, but for a GPT chat model. Returns the answer text.
-	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_PageHelper_PromptGptBuilder(
 		awsbedrockimplementation.proxies.PageHelper _pageHelper,
 		awsbedrockimplementation.proxies.Config _config,
@@ -1279,9 +1270,6 @@ public final class Microflows
 		return builder;
 	}
 
-	/**
-	 * Same as the Claude prompt for the ticket Q&A, but for a GPT chat model. Returns the answer text.
-	 */
 	public static void sUB_PageHelper_PromptGpt(
 		IContext context,
 		awsbedrockimplementation.proxies.PageHelper _pageHelper,
@@ -1295,6 +1283,36 @@ public final class Microflows
 				_bedrockModel
 			)
 			.execute(context);
+	}
+	/**
+	 * The user message of the summary step: the tickets, then the question. With a guardrail and "Check only the question" the question is wrapped in guardrail input tags.
+	 */
+	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_PageHelper_UserContentBuilder(
+		awsbedrockimplementation.proxies.PageHelper _pageHelper,
+		awsbedrockimplementation.proxies.Config _config
+	)
+	{
+		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.SUB_PageHelper_UserContent");
+		builder = builder.withParam("PageHelper", _pageHelper);
+		builder = builder.withParam("Config", _config);
+		return builder;
+	}
+
+	/**
+	 * The user message of the summary step: the tickets, then the question. With a guardrail and "Check only the question" the question is wrapped in guardrail input tags.
+	 */
+	public static java.lang.String sUB_PageHelper_UserContent(
+		IContext context,
+		awsbedrockimplementation.proxies.PageHelper _pageHelper,
+		awsbedrockimplementation.proxies.Config _config
+	)
+	{
+		Object result = sUB_PageHelper_UserContentBuilder(
+				_pageHelper,
+				_config
+			)
+			.execute(context);
+		return (java.lang.String) result;
 	}
 	/**
 	 * Ends and starts a database transaction, to commit a batch and free memory in long loops.

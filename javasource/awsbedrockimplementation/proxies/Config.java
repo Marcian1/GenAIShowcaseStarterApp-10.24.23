@@ -54,6 +54,7 @@ public class Config implements com.mendix.systemwideinterfaces.core.IEntityProxy
 		RerankModelKey("RerankModelKey"),
 		IsRerankEnabled("IsRerankEnabled"),
 		RerankPicked("RerankPicked"),
+		GuardrailTagQuestion("GuardrailTagQuestion"),
 		Config_ChatModel("AWSBedrockImplementation.Config_ChatModel"),
 		Config_EmbeddingModel("AWSBedrockImplementation.Config_EmbeddingModel"),
 		Config_RerankModel("AWSBedrockImplementation.Config_RerankModel"),
@@ -1232,6 +1233,42 @@ public class Config implements com.mendix.systemwideinterfaces.core.IEntityProxy
 	public final void setRerankPicked(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Boolean rerankpicked)
 	{
 		getMendixObject().setValue(context, MemberNames.RerankPicked.toString(), rerankpicked);
+	}
+
+	/**
+	 * @return value of GuardrailTagQuestion
+	 */
+	public final java.lang.Boolean getGuardrailTagQuestion()
+	{
+		return getGuardrailTagQuestion(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of GuardrailTagQuestion
+	 */
+	public final java.lang.Boolean getGuardrailTagQuestion(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.Boolean) getMendixObject().getValue(context, MemberNames.GuardrailTagQuestion.toString());
+	}
+
+	/**
+	 * Set value of GuardrailTagQuestion
+	 * @param guardrailtagquestion
+	 */
+	public final void setGuardrailTagQuestion(java.lang.Boolean guardrailtagquestion)
+	{
+		setGuardrailTagQuestion(getContext(), guardrailtagquestion);
+	}
+
+	/**
+	 * Set value of GuardrailTagQuestion
+	 * @param context
+	 * @param guardrailtagquestion
+	 */
+	public final void setGuardrailTagQuestion(com.mendix.systemwideinterfaces.core.IContext context, java.lang.Boolean guardrailtagquestion)
+	{
+		getMendixObject().setValue(context, MemberNames.GuardrailTagQuestion.toString(), guardrailtagquestion);
 	}
 
 	/**

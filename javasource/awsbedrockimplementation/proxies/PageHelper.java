@@ -30,6 +30,7 @@ public class PageHelper implements com.mendix.systemwideinterfaces.core.IEntityP
 		SystemPrompt("SystemPrompt"),
 		PromptResponse("PromptResponse"),
 		TicketData("TicketData"),
+		ErrorMessage("ErrorMessage"),
 		TicketChunk_PageHelper("AWSBedrockImplementation.TicketChunk_PageHelper");
 
 		private final java.lang.String metaName;
@@ -332,6 +333,42 @@ public class PageHelper implements com.mendix.systemwideinterfaces.core.IEntityP
 	public final void setTicketData(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String ticketdata)
 	{
 		getMendixObject().setValue(context, MemberNames.TicketData.toString(), ticketdata);
+	}
+
+	/**
+	 * @return value of ErrorMessage
+	 */
+	public final java.lang.String getErrorMessage()
+	{
+		return getErrorMessage(getContext());
+	}
+
+	/**
+	 * @param context
+	 * @return value of ErrorMessage
+	 */
+	public final java.lang.String getErrorMessage(com.mendix.systemwideinterfaces.core.IContext context)
+	{
+		return (java.lang.String) getMendixObject().getValue(context, MemberNames.ErrorMessage.toString());
+	}
+
+	/**
+	 * Set value of ErrorMessage
+	 * @param errormessage
+	 */
+	public final void setErrorMessage(java.lang.String errormessage)
+	{
+		setErrorMessage(getContext(), errormessage);
+	}
+
+	/**
+	 * Set value of ErrorMessage
+	 * @param context
+	 * @param errormessage
+	 */
+	public final void setErrorMessage(com.mendix.systemwideinterfaces.core.IContext context, java.lang.String errormessage)
+	{
+		getMendixObject().setValue(context, MemberNames.ErrorMessage.toString(), errormessage);
 	}
 
 	/**

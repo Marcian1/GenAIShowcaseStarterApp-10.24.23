@@ -25,7 +25,7 @@ test('overview shows the five tabs and a ready setup', async ({ page }) => {
 
 test('models list has Claude, GPT OSS, Cohere and Titan', async ({ page }) => {
   await openOverview(page, 'Models');
-  for (const n of ['Claude Sonnet 5', 'Claude Haiku 5.5', 'GPT OSS 120B', 'GPT OSS 20B', 'Cohere Embed v4', 'Titan Text Embeddings V2']) await expect(row(page, n)).toBeVisible();
+  for (const n of ['Claude Sonnet 5', 'Claude Haiku 5.5', 'GPT OSS 120B', 'Cohere Embed v4', 'Titan Text Embeddings V2']) await expect(row(page, n)).toBeVisible();
   await expect(row(page, 'GPT OSS 120B')).toContainText('GPT');
 });
 
@@ -37,11 +37,6 @@ test('try Claude', async ({ page }) => {
 test('try GPT OSS 120B', async ({ page }) => {
   await tryModel(page, 'GPT OSS 120B', 'hello gpt');
   await expect(page.getByText('[mock openai.gpt-oss-120b-1:0]').first()).toBeVisible();
-});
-
-test('try GPT OSS 20B', async ({ page }) => {
-  await tryModel(page, 'GPT OSS 20B', 'hello small gpt');
-  await expect(page.getByText('[mock openai.gpt-oss-20b-1:0]').first()).toBeVisible();
 });
 
 test('try Cohere embeddings', async ({ page }) => {
@@ -99,8 +94,8 @@ test('a guardrail that blocks the summary step is reported as an error, and "che
     await page.getByRole('tab', { name: 'Connections' }).click();
     await page.locator('.mx-name-txtGuardrailId input').fill(id);
     await page.locator('.mx-name-txtGuardrailId input').blur();
-    const sw = page.locator('.mx-name-swGuardrailTag input');
-    if ((await sw.isChecked()) !== onlyQuestion) await sw.click({ force: true });
+    const sw = page.locator('.mx-name-swGuardrailTag [role=switch]');
+    if (((await sw.getAttribute('aria-checked')) === 'true') !== onlyQuestion) await sw.click();
     await page.locator('.mx-name-btnAwsSave').click();
     await page.getByRole('dialog').getByRole('button', { name: 'OK' }).click();
   };

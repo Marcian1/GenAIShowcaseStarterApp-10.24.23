@@ -1,0 +1,6 @@
+mdl 1;
+-- Connections card: labels above the inputs (the three-column row truncated "Guardrail identifier"), roomier switch row.
+alter snippet AWSBedrockImplementation.SNIP_Connections {
+  set (Class: 'bedrock-fields-stacked') on lgAwsFields;
+  set (Class: 'bedrock-switch-row') on ctnGuardrailTag;
+};
