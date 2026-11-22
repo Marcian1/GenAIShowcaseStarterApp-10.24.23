@@ -180,7 +180,8 @@ async function openai(modelId, body) {
   const messages = (body.messages || []).map((m) => ({ role: m.role, content: blockText(m.content) }));
   const finish = (text, done, pt, ct, reasoning) => ({
     id: 'chatcmpl-mock-' + crypto.randomBytes(6).toString('hex'), object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: modelId,
-    choices: [{ index: 0, message: { role: 'assistant', content: text, ...(reasoning ? { reasoning_content: reasoning } : {}) }, finish_reason: done }],
+    // Real Bedrock InvokeModel: the reasoning is inline in content, in <reasoning> tags before the answer (no separate field).
+    choices: [{ index: 0, message: { role: 'assistant', content: (reasoning ? '<reasoning>' + reasoning + '</reasoning>' : '') + text }, finish_reason: done }],
     usage: { prompt_tokens: pt, completion_tokens: ct, total_tokens: pt + ct } });
   if (await useOllama()) {
     const r = await fetch(OLLAMA + '/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' },
@@ -188,7 +189,8 @@ async function openai(modelId, body) {
     if (!r.ok) throw new Error('Ollama chat ' + r.status + ': ' + (await r.text()));
     const j = await r.json();
     log('  ollama', CHAT_MODEL, 'replied (openai format),', (j.message?.content || '').length, 'chars');
-    return finish(j.message?.content || '', j.done_reason === 'length' ? 'length' : 'stop', j.prompt_eval_count || 0, j.eval_count || 0);
+    return finish(j.message?.content || '', j.done_reason === 'length' ? 'length' : 'stop', j.prompt_eval_count || 0, j.eval_count || 0,
+      body.reasoning_effort ? 'mock reasoning (effort ' + body.reasoning_effort + ')' : undefined);
   }
   const last = messages.length ? messages[messages.length - 1].content : '';
   const excerpt = last.replace(/\s+/g, ' ').trim().slice(0, 300);
@@ -222,6 +224,7 @@ const MODELS = [
   ['eu.anthropic.claude-haiku-5-5', 'Claude Haiku 5.5', 'Anthropic'],
   ['openai.gpt-oss-120b-1:0', 'gpt-oss-120b', 'OpenAI'],
   ['openai.gpt-oss-20b-1:0', 'gpt-oss-20b', 'OpenAI'],
+  ['global.openai.gpt-6.1-sol', 'GPT-6.1 Sol', 'OpenAI'],
   ['eu.cohere.embed-v4:0', 'Embed v4', 'Cohere'],
   ['cohere.rerank-v3-5:0', 'Rerank 3.5', 'Cohere'],
   ['amazon.titan-embed-text-v2:0', 'Titan Text Embeddings V2', 'Amazon'],

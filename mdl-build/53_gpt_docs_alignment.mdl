@@ -1,0 +1,108 @@
+mdl 1;
+
+-- GPT on Bedrock InvokeModel, aligned with the AWS docs (model-parameters-openai):
+--  * request uses max_completion_tokens (max_tokens is deprecated by OpenAI and rejected by newer reasoning models)
+--  * InvokeModel puts the reasoning inline in the content, wrapped in <reasoning> tags before the answer, so the answer text strips it
+create or modify json structure AWSBedrockImplementation.JSON_GptRequest
+  folder 'GptRequest/Resources/JSONStructures'
+  sample $${
+  "messages": [
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "Explain how AWS Bedrock InvokeModel works." }
+  ],
+  "max_completion_tokens": 1000,
+  "reasoning_effort": "high"
+}$$
+  CUSTOM NAME map (
+    item of 'messages' as 'Message'
+  );
+
+create or modify export mapping AWSBedrockImplementation.EXM_GptRequest
+  folder 'GptRequest/Resources/ExportMappings'
+  with json structure AWSBedrockImplementation.JSON_GptRequest
+{
+  AWSBedrockImplementation.GptRequest {
+    max_completion_tokens = Max_tokens,
+    reasoning_effort = Reasoning_effort,
+    AWSBedrockImplementation.GptMessage_GptRequest/AWSBedrockImplementation.GptMessage as messages {
+      role = Role,
+      content = Content
+    }
+  }
+};
+
+/** Returns the visible answer of a GPT InvokeModel response: removes the leading <reasoning>...</reasoning> block that Bedrock puts in front of the text. */
+create or modify microflow AWSBedrockImplementation.SUB_Gpt_AnswerText (
+  $Content: String
+)
+returns String as $Answer
+folder 'GptRequest'
+begin
+  declare $Answer String = $Content;
+  if $Content != empty and contains($Content, '</reasoning>') then
+    set $Answer = trim(substring($Content, find($Content, '</reasoning>') + 12));
+  end if;
+  return $Answer;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_Gpt_AnswerText to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.SUB_TrySession_SendGpt;
+create or modify microflow AWSBedrockImplementation.SUB_TrySession_SendGpt (
+  $TrySession: AWSBedrockImplementation.TrySession,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel,
+  $Config: AWSBedrockImplementation.Config
+)
+folder 'Try'
+begin
+  $GptRequest = create AWSBedrockImplementation.GptRequest (Max_tokens = $TrySession/MaxTokens, Reasoning_effort = getKey($TrySession/Effort));
+  $SystemMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'system', Content = if $TrySession/System = empty or trim($TrySession/System) = '' then 'You are a helpful assistant.' else $TrySession/System);
+  $UserMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'user', Content = $TrySession/Input);
+  $Request = export to mapping AWSBedrockImplementation.EXM_GptRequest($GptRequest);
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config);
+  $GptResponse = import from mapping AWSBedrockImplementation.IMM_GptResponse($Response);
+  retrieve $ChoiceList from $GptResponse/AWSBedrockImplementation.GptChoice_GptResponse;
+  $Choice = head $ChoiceList;
+  retrieve $ChoiceMessageList from $Choice/AWSBedrockImplementation.GptChoiceMessage_GptChoice;
+  $ChoiceMessage = head $ChoiceMessageList;
+  retrieve $UsageList from $GptResponse/AWSBedrockImplementation.GptUsage_GptResponse;
+  $Usage = head $UsageList;
+  $AnswerText = call microflow AWSBedrockImplementation.SUB_Gpt_AnswerText(Content = $ChoiceMessage/Content);
+  change $TrySession (Output = $AnswerText, InputTokens = $Usage/Prompt_tokens, OutputTokens = $Usage/Completion_tokens, RawRequest = $Request, RawResponse = $Response);
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_TrySession_SendGpt to AWSBedrockImplementation.Admin;
+
+drop microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt;
+create or modify microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt (
+  $PageHelper: AWSBedrockImplementation.PageHelper,
+  $Config: AWSBedrockImplementation.Config,
+  $BedrockModel: AWSBedrockImplementation.BedrockModel
+)
+folder 'Ticket'
+begin
+  declare $System String = if $PageHelper/SystemPrompt = empty or trim($PageHelper/SystemPrompt) = '' then 'You are a helpful assistant.' else $PageHelper/SystemPrompt;
+  $UserContent = call microflow AWSBedrockImplementation.SUB_PageHelper_UserContent(PageHelper = $PageHelper, Config = $Config);
+  $GptRequest = create AWSBedrockImplementation.GptRequest (Max_tokens = $BedrockModel/MaxTokens, Reasoning_effort = getKey($BedrockModel/Effort));
+  $SystemMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'system', Content = $System);
+  $UserMessage = create AWSBedrockImplementation.GptMessage (GptMessage_GptRequest = $GptRequest, Role = 'user', Content = $UserContent);
+  $Request = export to mapping AWSBedrockImplementation.EXM_GptRequest($GptRequest) on error without rollback begin
+    change $PageHelper (ErrorMessage = 'Export mapping error: ' + $latestError/Message) refresh;
+    return;
+  end error;
+  $Response = call java action AWSBedrockImplementation.JA_BedrockInvokeModel(Request = $Request, ModelName = $BedrockModel/ModelId, Config = $Config) on error without rollback begin
+    change $PageHelper (ErrorMessage = $latestError/Message) refresh;
+    return;
+  end error;
+  $GptResponse = import from mapping AWSBedrockImplementation.IMM_GptResponse($Response) on error without rollback begin
+    change $PageHelper (ErrorMessage = 'Import mapping error: ' + $latestError/Message) refresh;
+    return;
+  end error;
+  retrieve $ChoiceList from $GptResponse/AWSBedrockImplementation.GptChoice_GptResponse;
+  $Choice = head $ChoiceList;
+  retrieve $ChoiceMessageList from $Choice/AWSBedrockImplementation.GptChoiceMessage_GptChoice;
+  $ChoiceMessage = head $ChoiceMessageList;
+  $AnswerText = call microflow AWSBedrockImplementation.SUB_Gpt_AnswerText(Content = $ChoiceMessage/Content);
+  change $PageHelper (PromptResponse = $AnswerText) refresh;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_PageHelper_PromptGpt to AWSBedrockImplementation.Admin;

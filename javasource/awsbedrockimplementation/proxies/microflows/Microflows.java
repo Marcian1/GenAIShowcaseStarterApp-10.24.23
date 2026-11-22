@@ -1192,7 +1192,7 @@ public final class Microflows
 			.execute(context);
 	}
 	/**
-	 * Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku model when it is missing.
+	 * Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku and GPT-6.1 Sol models when missing.
 	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_BedrockModel_SeedDefaultsBuilder()
 	{
@@ -1201,7 +1201,7 @@ public final class Microflows
 	}
 
 	/**
-	 * Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku model when it is missing.
+	 * Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku and GPT-6.1 Sol models when missing.
 	 */
 	public static void sUB_BedrockModel_SeedDefaults(IContext context)
 	{
@@ -1256,6 +1256,32 @@ public final class Microflows
 				_config
 			)
 			.execute(context);
+	}
+	/**
+	 * Returns the visible answer of a GPT InvokeModel response: removes the leading <reasoning>...</reasoning> block that Bedrock puts in front of the text.
+	 */
+	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_Gpt_AnswerTextBuilder(
+		java.lang.String _content
+	)
+	{
+		com.mendix.core.actionmanagement.MicroflowCallBuilder builder = Core.microflowCall("AWSBedrockImplementation.SUB_Gpt_AnswerText");
+		builder = builder.withParam("Content", _content);
+		return builder;
+	}
+
+	/**
+	 * Returns the visible answer of a GPT InvokeModel response: removes the leading <reasoning>...</reasoning> block that Bedrock puts in front of the text.
+	 */
+	public static java.lang.String sUB_Gpt_AnswerText(
+		IContext context,
+		java.lang.String _content
+	)
+	{
+		Object result = sUB_Gpt_AnswerTextBuilder(
+				_content
+			)
+			.execute(context);
+		return (java.lang.String) result;
 	}
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_PageHelper_PromptGptBuilder(
 		awsbedrockimplementation.proxies.PageHelper _pageHelper,
@@ -1454,9 +1480,6 @@ public final class Microflows
 			)
 			.execute(context);
 	}
-	/**
-	 * Sends the prompt to a GPT (OpenAI gpt-oss) model on Bedrock and stores the answer, token counts and raw JSON on the try-out.
-	 */
 	public static com.mendix.core.actionmanagement.MicroflowCallBuilder sUB_TrySession_SendGptBuilder(
 		awsbedrockimplementation.proxies.TrySession _trySession,
 		awsbedrockimplementation.proxies.BedrockModel _bedrockModel,
@@ -1470,9 +1493,6 @@ public final class Microflows
 		return builder;
 	}
 
-	/**
-	 * Sends the prompt to a GPT (OpenAI gpt-oss) model on Bedrock and stores the answer, token counts and raw JSON on the try-out.
-	 */
 	public static void sUB_TrySession_SendGpt(
 		IContext context,
 		awsbedrockimplementation.proxies.TrySession _trySession,

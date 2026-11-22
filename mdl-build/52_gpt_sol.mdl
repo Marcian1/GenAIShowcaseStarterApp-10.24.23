@@ -1,0 +1,41 @@
+mdl 1;
+
+-- Adds GPT-6.1 Sol (OpenAI, global.openai.gpt-6.1-sol: the bedrock-runtime global inference profile; plain openai.gpt-6.1-sol exists only on bedrock-mantle) as an optional chat model next to Claude Haiku, seeded by ModelId.
+drop microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults;
+/** Creates the default models the first time the app is opened, the Cohere reranker once, and the optional Claude Haiku and GPT-6.1 Sol models when missing. */
+create or modify microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults ()
+folder 'BedrockModel'
+begin
+  retrieve $ModelList from AWSBedrockImplementation.BedrockModel;
+  $ModelCount = count $ModelList;
+  if $ModelCount = 0 then
+    $Claude = create AWSBedrockImplementation.BedrockModel (Name = 'Claude Sonnet 5', ModelId = 'eu.anthropic.claude-sonnet-5', Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.high) commit;
+    $Gpt = create AWSBedrockImplementation.BedrockModel (Name = 'GPT OSS 120B', ModelId = 'openai.gpt-oss-120b-1:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.medium) commit;
+    $Cohere = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Embed v4', ModelId = 'eu.cohere.embed-v4:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Cohere, Dimension = 1024, InputType = AWSBedrockImplementation.ENUM_CohereInputType.search_document, Truncate = AWSBedrockImplementation.ENUM_CohereTruncate.RIGHT) commit;
+    $Titan = create AWSBedrockImplementation.BedrockModel (Name = 'Titan Text Embeddings V2', ModelId = 'amazon.titan-embed-text-v2:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Titan, Dimension = 1024, Normalize = true) commit;
+  end if;
+  retrieve $SeedConfig from AWSBedrockImplementation.Config
+    first;
+  if $SeedConfig != empty and not($SeedConfig/RerankPicked) then
+    retrieve $ExistingRerank from AWSBedrockImplementation.BedrockModel
+    where Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank
+    first;
+    if $ExistingRerank = empty then
+      $Rerank = create AWSBedrockImplementation.BedrockModel (Name = 'Cohere Rerank 3.5', ModelId = 'cohere.rerank-v3-5:0', Family = AWSBedrockImplementation.ENUM_ModelFamily.Rerank) commit;
+    end if;
+  end if;
+  retrieve $ExistingHaiku from AWSBedrockImplementation.BedrockModel
+    where ModelId = 'eu.anthropic.claude-haiku-5-5'
+    first;
+  if $ExistingHaiku = empty then
+    $Haiku = create AWSBedrockImplementation.BedrockModel (Name = 'Claude Haiku 5.5', ModelId = 'eu.anthropic.claude-haiku-5-5', Family = AWSBedrockImplementation.ENUM_ModelFamily.Claude, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.medium) commit;
+  end if;
+  retrieve $ExistingSol from AWSBedrockImplementation.BedrockModel
+    where ModelId = 'global.openai.gpt-6.1-sol'
+    first;
+  if $ExistingSol = empty then
+    $Sol = create AWSBedrockImplementation.BedrockModel (Name = 'GPT-6.1 Sol', ModelId = 'global.openai.gpt-6.1-sol', Family = AWSBedrockImplementation.ENUM_ModelFamily.OpenAI, MaxTokens = 5000, Effort = AWSBedrockImplementation.ENUM_Effort.medium) commit;
+  end if;
+  return;
+end;
+grant execute on microflow AWSBedrockImplementation.SUB_BedrockModel_SeedDefaults to AWSBedrockImplementation.Admin;
