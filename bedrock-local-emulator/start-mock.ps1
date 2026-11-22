@@ -25,5 +25,5 @@ Write-Host "mock pid $($node.Id), log: $dir\mock.log"
 if ($RunApp) {
   Set-Location $root
   mxcli run stop -p GenAIShowcaseStarterApp.mpr
-  mxcli run --local --detach --db-type hsqldb -p GenAIShowcaseStarterApp.mpr
+  mxcli run --local --detach --db-type hsqldb --app-port 8085 --admin-port 8086 --serve-port 8087 -p GenAIShowcaseStarterApp.mpr
 }
