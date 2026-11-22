@@ -103,8 +103,15 @@ let ollamaOk = null;
 async function useOllama() {
   if (process.env.MOCK_BACKEND === 'hash') return false;
   if (ollamaOk === true) return true;
-  try { const r = await fetch(OLLAMA + '/api/tags', { signal: AbortSignal.timeout(1500) }); ollamaOk = r.ok; } catch { ollamaOk = false; }
-  if (!ollamaOk) log('Ollama not reachable at', OLLAMA, '- using fake responses');
+  // Ollama can be slow to answer while it loads or runs a model, so probe patiently (a quick timeout silently switched the mock to fake answers).
+  for (let attempt = 1; attempt <= 3 && ollamaOk !== true; attempt++) {
+    try { const r = await fetch(OLLAMA + '/api/tags', { signal: AbortSignal.timeout(8000) }); ollamaOk = r.ok; } catch { ollamaOk = false; }
+  }
+  if (!ollamaOk) {
+    // MOCK_REQUIRE_OLLAMA=1: never fall back to fake answers (used when testing the app with a real model).
+    if (process.env.MOCK_REQUIRE_OLLAMA === '1') throw new Error('Ollama not reachable at ' + OLLAMA + ' (MOCK_REQUIRE_OLLAMA=1, refusing to use fake responses)');
+    log('Ollama not reachable at', OLLAMA, '- using fake responses');
+  }
   return ollamaOk;
 }
 const fitDims = (v, dims) => { // Bedrock callers ask for a fixed size; truncate/pad then re-normalise
