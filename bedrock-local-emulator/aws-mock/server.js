@@ -131,7 +131,7 @@ const blockText = (c) => typeof c === 'string' ? c : (Array.isArray(c) ? c.map((
 async function ollamaChat(modelId, body) {
   const messages = [];
   const sys = body.system && blockText(body.system); if (sys) messages.push({ role: 'system', content: sys });
-  for (const m of body.messages || []) messages.push({ role: m.role, content: blockText(m.content) });
+  for (const m of body.messages || []) messages.push({ role: m.role, content: blockText(m.content).replace(/<[/]?amazon-bedrock-guardrails-guardContent_[A-Za-z0-9]+>/g, '') }); // Bedrock removes the guardrail tags before the model sees the text
   const r = await fetch(OLLAMA + '/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ model: CHAT_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: Math.min(Number(body.max_tokens) || MAX_TOKENS, MAX_TOKENS) } }) });
   if (!r.ok) throw new Error('Ollama chat ' + r.status + ': ' + (await r.text()));
