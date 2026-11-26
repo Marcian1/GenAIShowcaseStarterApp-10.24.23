@@ -256,6 +256,24 @@ http.createServer(async (req, res) => {
       const payload = body ? JSON.parse(body) : {};
       const guard = req.headers['x-amzn-bedrock-guardrailidentifier'];
       log('Bedrock InvokeModel', modelId, guard ? `(guardrail ${guard}/${req.headers['x-amzn-bedrock-guardrailversion']})` : '');
+      // Fault injection for testing the app's error handling: a model id containing "-fault-<kind>" answers with that AWS failure.
+      const fault = /-fault-([a-z]+)/.exec(modelId);
+      if (fault) {
+        log('  FAULT injected:', fault[1]);
+        const err = (status, type, message) => json(res, status, { message }, { 'x-amzn-errortype': type, 'x-amzn-requestid': crypto.randomUUID() });
+        switch (fault[1]) {
+          case 'denied': return err(403, 'AccessDeniedException', "You don't have access to the model with the specified model ID.");
+          case 'throttle': return err(429, 'ThrottlingException', 'Too many requests, please wait before trying again.');
+          case 'validation': return err(400, 'ValidationException', 'The provided model identifier is invalid.');
+          case 'server': return err(500, 'InternalServerException', 'An internal server error occurred.');
+          case 'unavailable': return err(503, 'ServiceUnavailableException', 'Bedrock is unable to process your request.');
+          case 'timeout': return err(408, 'ModelTimeoutException', 'The request took too long to process. Processing time exceeded the model timeout length.');
+          case 'quota': return err(400, 'ServiceQuotaExceededException', 'Your request exceeds the service quota for your account.');
+          case 'garbage': res.writeHead(200, { 'content-type': 'application/json' }); return res.end('<html>this is not json</html>');
+          case 'empty': return json(res, 200, { id: 'msg_fault', type: 'message', role: 'assistant', model: modelId, content: [], stop_reason: 'max_tokens', usage: { input_tokens: 10, output_tokens: 0 } });
+          default: return err(400, 'ValidationException', 'Unknown fault kind ' + fault[1]);
+        }
+      }
       let out;
       if (guard && /anthropic|openai/.test(modelId) && guardrailBlocks(payload)) {
         log('  guardrail', guard, 'INTERVENED');
